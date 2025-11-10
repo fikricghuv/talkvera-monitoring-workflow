@@ -1,66 +1,57 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Activity, 
+  Cpu, 
   Clock, 
   AlertTriangle, 
   CheckCircle, 
-  TrendingUp, 
   Loader2, 
   RefreshCw,
-  Zap,
+  LoaderCircle,
   DollarSign,
-  BarChart3,
-  PlayCircle
+  Layers,
+  PlayCircle,
+  ListOrdered,
+  Timer,
+  Calendar
 } from "lucide-react";
 import { toast } from "sonner";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-
-interface DashboardMetrics {
-  queue: {
-    pending: number;
-    processing: number;
-    done: number;
-    failed: number;
-    total: number;
-  };
-  workflows: {
-    total: number;
-    successful: number;
-    failed: number;
-    running: number;
-    avgExecutionTime: number;
-    totalCost: number;
-    totalTokens: number;
-  };
-  nodes: {
-    total: number;
-    successful: number;
-    failed: number;
-    avgTokensPerExecution: number;
-    totalCost: number;
-  };
-  trends: {
-    dailyExecutions: Array<{ date: string; count: number; success: number; failed: number }>;
-    topWorkflows: Array<{ name: string; count: number; successRate: number }>;
-    costByDay: Array<{ date: string; cost: number }>;
-    tokenUsage: Array<{ date: string; tokens: number }>;
-  };
-}
+import { 
+  LineChart, 
+  Line, 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer, 
+  PieChart, 
+  Pie, 
+  Cell 
+} from "recharts";
 
 const Dashboard = () => {
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [metrics, setMetrics] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [periodFilter, setPeriodFilter] = useState<string>("30days");
+  const [periodFilter, setPeriodFilter] = useState("30days");
+
+  const [customDates, setCustomDates] = useState(() => {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+    return {
+      start: startDate.toISOString().split('T')[0],
+      end: endDate.toISOString().split('T')[0],
+    };
+  });
 
   useEffect(() => {
     fetchDashboardData();
-  }, [periodFilter]);
+  }, [periodFilter, customDates]);
 
-  const formatDate = (date: Date, format: string = "short") => {
+  const formatDate = (date, format = "short") => {
     if (format === "short") {
       const day = date.getDate().toString().padStart(2, '0');
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
@@ -71,24 +62,31 @@ const Dashboard = () => {
 
   const getDateRange = () => {
     const now = new Date();
-    let startDate: Date;
+    let startDate;
+    let endDate = new Date(now);
 
-    switch (periodFilter) {
-      case "7days":
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case "30days":
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      case "3months":
-        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    if (periodFilter === "custom") {
+      const startParts = customDates.start.split('-').map(Number);
+      const endParts = customDates.end.split('-').map(Number);
+      
+      startDate = new Date(startParts[0], startParts[1] - 1, startParts[2]);
+      endDate = new Date(endParts[0], endParts[1] - 1, endParts[2]);
+
+    } else {
+      switch (periodFilter) {
+        case "7days":
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case "3months":
+          startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          break;
+        case "30days":
+        default:
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      }
     }
 
     startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(now);
     endDate.setHours(23, 59, 59, 999);
 
     return { startDate, endDate };
@@ -99,7 +97,6 @@ const Dashboard = () => {
     const { startDate, endDate } = getDateRange();
 
     try {
-      // Fetch Queue Data
       const { data: queueData, error: queueError } = await supabase
         .from("dt_execution_process_queue")
         .select("*")
@@ -108,7 +105,6 @@ const Dashboard = () => {
 
       if (queueError) throw queueError;
 
-      // Fetch Workflow Executions
       const { data: workflowData, error: workflowError } = await supabase
         .from("dt_workflow_executions")
         .select("*")
@@ -118,7 +114,6 @@ const Dashboard = () => {
 
       if (workflowError) throw workflowError;
 
-      // Fetch Node Executions
       const { data: nodeData, error: nodeError } = await supabase
         .from("dt_node_executions")
         .select("*")
@@ -127,7 +122,6 @@ const Dashboard = () => {
 
       if (nodeError) throw nodeError;
 
-      // Process Queue Metrics
       const queueMetrics = {
         pending: queueData?.filter(q => q.status === "pending").length || 0,
         processing: queueData?.filter(q => q.status === "processing").length || 0,
@@ -136,7 +130,6 @@ const Dashboard = () => {
         total: queueData?.length || 0,
       };
 
-      // Process Workflow Metrics
       const successfulWorkflows = workflowData?.filter(w => w.status === "success" || !w.has_errors).length || 0;
       const failedWorkflows = workflowData?.filter(w => w.status === "error" || w.has_errors).length || 0;
       const runningWorkflows = workflowData?.filter(w => w.status === "running" || w.status === "waiting").length || 0;
@@ -148,16 +141,13 @@ const Dashboard = () => {
       const totalWorkflowCost = workflowData?.reduce((sum, w) => sum + (Number(w.estimated_cost_usd) || 0), 0) || 0;
       const totalWorkflowTokens = workflowData?.reduce((sum, w) => sum + (w.total_tokens || 0), 0) || 0;
 
-      // Process Node Metrics
       const successfulNodes = nodeData?.filter(n => n.execution_status === "success" && !n.has_error).length || 0;
       const failedNodes = nodeData?.filter(n => n.has_error || n.execution_status === "error").length || 0;
       const avgTokensPerNode = nodeData?.length 
         ? nodeData.reduce((sum, n) => sum + (n.total_tokens || 0), 0) / nodeData.length 
         : 0;
-      const totalNodeCost = nodeData?.reduce((sum, n) => sum + (Number(n.estimated_cost_usd) || 0), 0) || 0;
 
-      // Calculate Daily Trends
-      const dailyMap = new Map<string, { count: number; success: number; failed: number }>();
+      const dailyMap = new Map();
       workflowData?.forEach(w => {
         const date = formatDate(new Date(w.created_at));
         const existing = dailyMap.get(date) || { count: 0, success: 0, failed: 0 };
@@ -181,8 +171,7 @@ const Dashboard = () => {
         })
         .slice(-14);
 
-      // Top Workflows
-      const workflowMap = new Map<string, { count: number; success: number }>();
+      const workflowMap = new Map();
       workflowData?.forEach(w => {
         const name = w.workflow_name || w.execution_id;
         const existing = workflowMap.get(name) || { count: 0, success: 0 };
@@ -201,8 +190,7 @@ const Dashboard = () => {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-      // Cost by Day
-      const costMap = new Map<string, number>();
+      const costMap = new Map();
       workflowData?.forEach(w => {
         const date = formatDate(new Date(w.created_at));
         const cost = Number(w.estimated_cost_usd) || 0;
@@ -222,8 +210,7 @@ const Dashboard = () => {
         })
         .slice(-14);
 
-      // Token Usage by Day
-      const tokenMap = new Map<string, number>();
+      const tokenMap = new Map();
       workflowData?.forEach(w => {
         const date = formatDate(new Date(w.created_at));
         tokenMap.set(date, (tokenMap.get(date) || 0) + (w.total_tokens || 0));
@@ -258,7 +245,6 @@ const Dashboard = () => {
           successful: successfulNodes,
           failed: failedNodes,
           avgTokensPerExecution: Math.round(avgTokensPerNode),
-          totalCost: totalNodeCost,
         },
         trends: {
           dailyExecutions,
@@ -282,11 +268,53 @@ const Dashboard = () => {
     fetchDashboardData();
   };
 
+  const combinedData = useMemo(() => {
+    if (!metrics?.trends?.costByDay || !metrics?.trends?.tokenUsage) {
+      return [];
+    }
+  
+    const dataMap = new Map();
+  
+    metrics.trends.costByDay.forEach(item => {
+      dataMap.set(item.date, { 
+        date: item.date, 
+        cost: item.cost || 0,
+        tokens: 0
+      });
+    });
+  
+    metrics.trends.tokenUsage.forEach(item => {
+      const existing = dataMap.get(item.date);
+      if (existing) {
+        existing.tokens = item.tokens || 0;
+      } else {
+        dataMap.set(item.date, {
+          date: item.date,
+          cost: 0,
+          tokens: item.tokens || 0
+        });
+      }
+    });
+
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+    const sortLogic = (a, b) => {
+      const [dayA, monthA] = a.date.split(' ');
+      const [dayB, monthB] = b.date.split(' ');
+      const monthIndexA = monthNames.indexOf(monthA);
+      const monthIndexB = monthNames.indexOf(monthB);
+      if (monthIndexA !== monthIndexB) return monthIndexA - monthIndexB;
+      return parseInt(dayA) - parseInt(dayB);
+    };
+
+    return Array.from(dataMap.values()).sort(sortLogic);
+  
+  }, [metrics]);
+
   if (isLoading || !metrics) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">Memuat dashboard...</p>
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <p className="text-gray-600">Memuat dashboard...</p>
       </div>
     );
   }
@@ -301,205 +329,183 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="space-y-6 pl-4 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+   <div className="space-y-6 pl-4 bg-gray-50 min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900">Dashboard</h2>
+            <p className="text-gray-600 mt-1">Ringkasan eksekusi workflow dan antrian proses</p>
+          </div>
+          
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <select 
+              value={periodFilter} 
+              onChange={(e) => setPeriodFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-lg"
+            >
+              <option value="7days">7 Hari Terakhir</option>
+              <option value="30days">30 Hari Terakhir</option>
+              <option value="3months">3 Bulan Terakhir</option>
+              <option value="custom">Periode Custom</option>
+            </select>
+            
+            <button 
+              onClick={handleRefresh}
+              className="px-4 py-2 border border-gray-300 bg-white rounded-lg hover:bg-accent hover:text-white transition-colors flex items-center gap-2 shadow-lg"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </button>
+            
+            {periodFilter === "custom" && (
+              <div className="flex items-center gap-2 border-l pl-2">
+                <input
+                  type="date"
+                  value={customDates.start}
+                  onChange={(e) => setCustomDates(prev => ({ ...prev, start: e.target.value }))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-gray-500">s/d</span>
+                <input
+                  type="date"
+                  value={customDates.end}
+                  onChange={(e) => setCustomDates(prev => ({ ...prev, end: e.target.value }))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Workflow Execution Metrics */}
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground">Ringkasan eksekusi workflow dan antrian proses</p>
+          <h3 className="text-lg font-semibold mb-3 text-gray-900">Metrik Workflow Execution</h3>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <AnimatedMetricCard
+              title="Total Eksekusi"
+              value={metrics.workflows.total}
+              icon={<PlayCircle className="h-5 w-5 text-blue-500" />}
+              borderColor="border-blue-500"
+              subtitle={
+                <>
+                  <span className="text-green-600">{metrics.workflows.successful} berhasil</span> · 
+                  <span className="text-red-600 ml-1">{metrics.workflows.failed} gagal</span>
+                </>
+              }
+            />
+            <AnimatedMetricCard
+              title="Success Rate"
+              value={((metrics.workflows.successful / metrics.workflows.total) * 100).toFixed(1)}
+              suffix="%"
+              icon={<CheckCircle className="h-5 w-5 text-green-600" />}
+              borderColor="border-green-600"
+              subtitle="Tingkat keberhasilan"
+              decimals={1}
+            />
+            <AnimatedMetricCard
+              title="Avg Execution Time"
+              value={(metrics.workflows.avgExecutionTime / 1000).toFixed(2)}
+              suffix="s"
+              icon={<Timer className="h-5 w-5 text-blue-900" />}
+              borderColor="border-blue-900"
+              subtitle="Rata-rata waktu eksekusi"
+              decimals={2}
+            />
+            <AnimatedMetricCard
+              title="Total Cost"
+              value={metrics.workflows.totalCost.toFixed(4)}
+              prefix="$"
+              icon={<DollarSign className="h-5 w-5 text-green-800" />}
+              borderColor="border-green-800"
+              subtitle={`${metrics.workflows.totalTokens.toLocaleString()} tokens`}
+              decimals={4}
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Select value={periodFilter} onValueChange={setPeriodFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7days">7 Hari Terakhir</SelectItem>
-              <SelectItem value="30days">30 Hari Terakhir</SelectItem>
-              <SelectItem value="3months">3 Bulan Terakhir</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={handleRefresh} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
+
+        {/* Node Execution Metrics */}
+        <div>
+          <h3 className="text-lg font-semibold mb-3 text-gray-900">Metrik Node Execution</h3>
+          <div className="grid gap-4 md:grid-cols-3">
+            <AnimatedMetricCard
+              title="Total Nodes"
+              value={metrics.nodes.total}
+              icon={<Layers className="h-5 w-5 text-blue-500" />}
+              borderColor="border-blue-500"
+              subtitle={
+                <>
+                  <span className="text-green-600">{metrics.nodes.successful} berhasil</span> · 
+                  <span className="text-red-600 ml-1">{metrics.nodes.failed} gagal</span>
+                </>
+              }
+            />
+            <AnimatedMetricCard
+              title="Success Rate"
+              value={((metrics.nodes.successful / metrics.nodes.total) * 100).toFixed(1)}
+              suffix="%"
+              icon={<CheckCircle className="h-5 w-5 text-green-600" />}
+              borderColor="border-green-600"
+              subtitle="Tingkat keberhasilan"
+              decimals={1}
+            />
+            <AnimatedMetricCard
+              title="Avg Tokens/Node"
+              value={metrics.nodes.avgTokensPerExecution}
+              icon={<Cpu className="h-5 w-5 text-blue-900" />}
+              borderColor="border-blue-900"
+              subtitle="Token per eksekusi node"
+              useLocaleString={true}
+            />
+          </div>
         </div>
-      </div>
 
-      {/* Workflow Execution Metrics */}
-      <div>
-        <h3 className="text-lg font-semibold mb-3">Metrik Workflow Execution</h3>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="shadow-lg border-l-4 border-blue-500 transition-shadow hover:shadow-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Eksekusi</CardTitle>
-              <PlayCircle className="h-4 w-4 text-blue-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.workflows.total}</div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-green-600">{metrics.workflows.successful} berhasil</span> · 
-                <span className="text-red-600 ml-1">{metrics.workflows.failed} gagal</span>
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-l-4 border-green-600 transition-shadow hover:shadow-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {metrics.workflows.total > 0 
-                  ? ((metrics.workflows.successful / metrics.workflows.total) * 100).toFixed(1)
-                  : 0}%
-              </div>
-              <p className="text-xs text-muted-foreground">Tingkat keberhasilan</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-l-4 border-blue-900 transition-shadow hover:shadow-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Execution Time</CardTitle>
-              <Clock className="h-4 w-4 text-blue-900" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {(metrics.workflows.avgExecutionTime / 1000).toFixed(2)}s
-              </div>
-              <p className="text-xs text-muted-foreground">Rata-rata waktu eksekusi</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-l-4 border-green-800 transition-shadow hover:shadow-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
-              <DollarSign className="h-4 w-4 text-green-800" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${metrics.workflows.totalCost.toFixed(4)}</div>
-              <p className="text-xs text-muted-foreground">{metrics.workflows.totalTokens.toLocaleString()} tokens</p>
-            </CardContent>
-          </Card>
+        {/* Queue Status Cards */}
+        <div>
+          <h3 className="text-lg font-semibold mb-3 text-gray-900">Status Antrian Proses</h3>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <AnimatedMetricCard
+              title="Total Antrian"
+              value={metrics.queue.total}
+              icon={<ListOrdered className="h-5 w-5 text-blue-500" />}
+              borderColor="border-blue-500"
+              subtitle="Total item"
+            />
+            <AnimatedMetricCard
+              title="Done"
+              value={metrics.queue.done}
+              icon={<CheckCircle className="h-5 w-5 text-green-600" />}
+              borderColor="border-green-600"
+              subtitle="Selesai"
+            />
+            <AnimatedMetricCard
+              title="Pending"
+              value={metrics.queue.pending}
+              icon={<Clock className="h-5 w-5 text-yellow-500" />}
+              borderColor="border-yellow-500"
+              subtitle="Menunggu proses"
+            />
+            <AnimatedMetricCard
+              title="Processing"
+              value={metrics.queue.processing}
+              icon={<LoaderCircle className="h-5 w-5 text-blue-800" />}
+              borderColor="border-blue-800"
+              subtitle="Sedang diproses"
+            />
+            <AnimatedMetricCard
+              title="Failed"
+              value={metrics.queue.failed}
+              icon={<AlertTriangle className="h-5 w-5 text-red-500" />}
+              borderColor="border-red-500"
+              subtitle="Gagal"
+            />
+          </div>
         </div>
-      </div>
 
-      {/* Node Execution Metrics */}
-      <div>
-        <h3 className="text-lg font-semibold mb-3">Metrik Node Execution</h3>
-        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-3">
-          <Card className="shadow-lg border-l-4 border-blue-500 transition-shadow hover:shadow-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Nodes</CardTitle>
-              <BarChart3 className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.nodes.total}</div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-green-600">{metrics.nodes.successful} berhasil</span> · 
-                <span className="text-red-600 ml-1">{metrics.nodes.failed} gagal</span>
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-l-4 border-green-600 transition-shadow hover:shadow-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {metrics.nodes.total > 0 
-                  ? ((metrics.nodes.successful / metrics.nodes.total) * 100).toFixed(1)
-                  : 0}%
-              </div>
-              <p className="text-xs text-muted-foreground">Tingkat keberhasilan</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-l-4 border-blue-900 transition-shadow hover:shadow-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Tokens/Node</CardTitle>
-              <Activity className="h-4 w-4 text-blue-900" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.nodes.avgTokensPerExecution.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">Token per eksekusi node</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Queue Status Cards */}
-      <div>
-        <h3 className="text-lg font-semibold mb-3">Status Antrian Proses</h3>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <Card className="shadow-lg border-l-4 border-blue-500 transition-shadow hover:shadow-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Antrian</CardTitle>
-              <Activity className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.queue.total}</div>
-              <p className="text-xs text-muted-foreground">Total item</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-l-4 border-yellow-500 transition-shadow hover:shadow-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
-              <Clock className="h-4 w-4 text-yellow-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.queue.pending}</div>
-              <p className="text-xs text-muted-foreground">Menunggu proses</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-l-4 border-blue-800 transition-shadow hover:shadow-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Processing</CardTitle>
-              <Zap className="h-4 w-4 text-blue-800" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.queue.processing}</div>
-              <p className="text-xs text-muted-foreground">Sedang diproses</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-l-4 border-green-600 transition-shadow hover:shadow-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Done</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.queue.done}</div>
-              <p className="text-xs text-muted-foreground">Selesai</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-l-4 border-red-500 transition-shadow hover:shadow-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Failed</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.queue.failed}</div>
-              <p className="text-xs text-muted-foreground">Gagal</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Charts */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Daily Executions Trend */}
-        <Card className="shadow-lg transition-shadow hover:shadow-xl">
-          <CardHeader>
-            <CardTitle>Tren Eksekusi Harian</CardTitle>
-          </CardHeader>
-          <CardContent>
+        {/* Charts */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Daily Executions Trend */}
+          <ChartCard title="Tren Eksekusi Harian">
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={metrics.trends.dailyExecutions}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -507,96 +513,206 @@ const Dashboard = () => {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="count" stroke="#3b82f6" name="Total" strokeWidth={2} />
-                <Line type="monotone" dataKey="success" stroke="#22c55e" name="Berhasil" strokeWidth={2} />
-                <Line type="monotone" dataKey="failed" stroke="#ef4444" name="Gagal" strokeWidth={2} />
+                <Line 
+                  type="monotone" 
+                  dataKey="count" 
+                  stroke="#3b82f6" 
+                  name="Total" 
+                  strokeWidth={2} 
+                  dot={{ r: 4 }} 
+                  activeDot={{ r: 8 }} 
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="success" 
+                  stroke="#22c55e" 
+                  name="Berhasil" 
+                  strokeWidth={2} 
+                  dot={{ r: 4 }} 
+                  activeDot={{ r: 8 }} 
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="failed" 
+                  stroke="#ef4444" 
+                  name="Gagal" 
+                  strokeWidth={2} 
+                  dot={{ r: 4 }} 
+                  activeDot={{ r: 8 }} 
+                />
               </LineChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </ChartCard>
 
-        {/* Queue Status Distribution */}
-        <Card className="shadow-lg transition-shadow hover:shadow-xl">
-          <CardHeader>
-            <CardTitle>Distribusi Status Antrian</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={queuePieData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {queuePieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Top Workflows */}
-        <Card className="shadow-lg transition-shadow hover:shadow-xl">
-          <CardHeader>
-            <CardTitle>Top 5 Workflows</CardTitle>
-          </CardHeader>
-          <CardContent>
+          {/* Top Workflows */}
+          <ChartCard title="Top 5 Workflows">
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={metrics.trends.topWorkflows} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" />
                 <YAxis dataKey="name" type="category" width={150} />
                 <Tooltip />
-                <Bar dataKey="count" fill="#3b82f6" name="Jumlah Eksekusi" />
+                <Bar 
+                  dataKey="count" 
+                  fill="#3b82f6" 
+                  name="Jumlah Eksekusi" 
+                  radius={[0, 8, 8, 0]}
+                  animationBegin={0}
+                  animationDuration={1000}
+                />
               </BarChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Cost Trend */}
-        <Card className="shadow-lg transition-shadow hover:shadow-xl">
-          <CardHeader>
-            <CardTitle>Tren Biaya Harian</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={metrics.trends.costByDay}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip formatter={(value) => `$${Number(value).toFixed(4)}`} />
-                <Line type="monotone" dataKey="cost" stroke="#10b981" name="Biaya (USD)" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Token Usage Trend */}
-      <Card className="shadow-lg transition-shadow hover:shadow-xl">
-        <CardHeader>
-          <CardTitle>Tren Penggunaan Token</CardTitle>
-        </CardHeader>
-        <CardContent>
+          </ChartCard>
+        </div>
+        {/* Tren Biaya & Token Harian (Gabungan) */}
+        <ChartCard title="Tren Biaya & Penggunaan Token Harian">
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={metrics.trends.tokenUsage}>
+            <BarChart data={combinedData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip formatter={(value) => Number(value).toLocaleString()} />
-              <Bar dataKey="tokens" fill="#10b981" name="Total Tokens" />
+              <YAxis 
+                yAxisId="left" 
+                orientation="left" 
+                stroke="#3b82f6"
+                label={{ value: 'Biaya (USD)', angle: -90, position: 'insideLeft' }}
+                tickFormatter={(value) => `$${value.toFixed(4)}`}
+              />
+              <YAxis 
+                yAxisId="right" 
+                orientation="right" 
+                stroke="#10b981"
+                label={{ value: 'Tokens', angle: 90, position: 'insideRight' }}
+                tickFormatter={(value) => value.toLocaleString()}
+              />
+              <Tooltip 
+                formatter={(value, name) => {
+                  if (name === "Biaya (USD)") {
+                    return [`$${Number(value).toFixed(4)}`, name];
+                  }
+                  if (name === "Total Tokens") {
+                    return [Number(value).toLocaleString(), name];
+                  }
+                  return [value, name];
+                }} 
+              />
+              <Legend />
+              <Bar 
+                yAxisId="left" 
+                dataKey="cost" 
+                fill="#3b82f6"
+                name="Biaya (USD)" 
+                radius={[8, 8, 0, 0]}
+                animationBegin={0}
+                animationDuration={800}
+              />
+              <Bar 
+                yAxisId="right" 
+                dataKey="tokens" 
+                fill="#10b981"
+                name="Total Tokens" 
+                radius={[8, 8, 0, 0]}
+                animationBegin={0}
+                animationDuration={800}
+              />
             </BarChart>
           </ResponsiveContainer>
-        </CardContent>
-      </Card>
+        </ChartCard>
+      </div>
+    </div>
+  );
+};
+
+// Animated Counter Hook
+const useCountUp = (end, duration = 2000, decimals = 0, prefix = '', suffix = '', useLocaleString = false) => {
+  const [count, setCount] = useState(0);
+  const [displayValue, setDisplayValue] = useState('0');
+  const countRef = useRef(0);
+  const startTimeRef = useRef(null);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    const endValue = parseFloat(end) || 0;
+    startTimeRef.current = null;
+    countRef.current = 0;
+
+    const animate = (timestamp) => {
+      if (!startTimeRef.current) startTimeRef.current = timestamp;
+      const progress = timestamp - startTimeRef.current;
+      const percentage = Math.min(progress / duration, 1);
+      
+      // Easing function (easeOutExpo)
+      const easeOut = percentage === 1 ? 1 : 1 - Math.pow(2, -10 * percentage);
+      
+      const currentCount = endValue * easeOut;
+      countRef.current = currentCount;
+      setCount(currentCount);
+
+      if (useLocaleString) {
+        setDisplayValue(Math.round(currentCount).toLocaleString());
+      } else if (decimals > 0) {
+        setDisplayValue(currentCount.toFixed(decimals));
+      } else {
+        setDisplayValue(Math.round(currentCount).toString());
+      }
+
+      if (percentage < 1) {
+        rafRef.current = requestAnimationFrame(animate);
+      } else {
+        setCount(endValue);
+        if (useLocaleString) {
+          setDisplayValue(Math.round(endValue).toLocaleString());
+        } else if (decimals > 0) {
+          setDisplayValue(endValue.toFixed(decimals));
+        } else {
+          setDisplayValue(Math.round(endValue).toString());
+        }
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [end, duration, decimals, useLocaleString]);
+
+  return `${prefix}${displayValue}${suffix}`;
+};
+
+// Animated MetricCard Component
+const AnimatedMetricCard = ({ 
+  title, 
+  value, 
+  icon, 
+  borderColor, 
+  subtitle, 
+  decimals = 0, 
+  prefix = '', 
+  suffix = '',
+  useLocaleString = false 
+}) => {
+  const animatedValue = useCountUp(value, 2000, decimals, prefix, suffix, useLocaleString);
+
+  return (
+    <div className={`bg-white rounded-lg shadow-lg border-l-4 ${borderColor} p-6 hover:shadow-xl transition-shadow`}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-medium">{title}</h3>
+        {icon}
+      </div>
+      <div className="text-2xl font-bold text-gray-900 mb-1">{animatedValue}</div>
+      <p className="text-xs text-gray-500">{subtitle}</p>
+    </div>
+  );
+};
+
+// Reusable ChartCard Component
+const ChartCard = ({ title, children }) => {
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+      {children}
     </div>
   );
 };

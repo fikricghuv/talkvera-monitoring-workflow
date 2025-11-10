@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Activity, AlertCircle, DollarSign, Zap, Loader2, Download, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { AlertTriangle, AlertCircle, DollarSign, CirclePlay, Cpu, Loader2, Download, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { toast } from "sonner";
@@ -662,6 +662,7 @@ const WorkflowExecution = () => {
 
   return (
     <div className="space-y-6 pl-4 bg-gray-50 min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Workflow Executions</h2>
         <p className="text-muted-foreground">Monitor dan analisis eksekusi workflow</p>
@@ -669,57 +670,51 @@ const WorkflowExecution = () => {
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="shadow-lg border-l-4 border-blue-500 transition-shadow hover:shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Eksekusi</CardTitle>
-            <Activity className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpiData.totalExecutions}</div>
-            <p className="text-xs text-muted-foreground">Total</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-lg border-l-4 border-red-500 transition-shadow hover:shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Eksekusi Gagal</CardTitle>
-            <AlertCircle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpiData.failedExecutions}</div>
-            <p className="text-xs text-destructive">
-              {kpiData.totalExecutions > 0
+        <AnimatedMetricCard
+          title="Total Eksekusi"
+          value={kpiData.totalExecutions}
+          suffix=""
+          icon={<CirclePlay className="h-5 w-5 text-blue-500" />}
+          borderColor="border-blue-500"
+          subtitle="Total"
+          decimals={0}
+        />
+        
+        <AnimatedMetricCard
+          title="Eksekusi Gagal"
+          value={kpiData.failedExecutions}
+          suffix=""
+          icon={<AlertTriangle className="h-5 w-5 text-destructive" />}
+          borderColor="border-red-500"
+          subtitle={kpiData.totalExecutions > 0
                 ? `${((kpiData.failedExecutions / kpiData.totalExecutions) * 100).toFixed(1)}% dari total`
                 : "Tidak ada data"}
-            </p>
-          </CardContent>
-        </Card>
+          decimals={0}
+        />
 
-        <Card className="shadow-lg border-l-4 border-green-600 transition-shadow hover:shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Biaya (USD)</CardTitle>
-            <DollarSign className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${kpiData.totalCost.toFixed(4)}</div>
-            <p className="text-xs text-muted-foreground">Estimasi biaya AI</p>
-          </CardContent>
-        </Card>
+        <AnimatedMetricCard
+          title="Total Estimasi Biaya (USD)"
+          value={kpiData.totalCost}
+          suffix=" $"
+          icon={<DollarSign className="h-5 w-5 text-green-600" />}
+          borderColor="border-green-600"
+          subtitle="Estimasi biaya AI"
+          decimals={4}
+        />
 
-        <Card className="shadow-lg border-l-4 border-green-800 transition-shadow hover:shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Tokens</CardTitle>
-            <Zap className="h-4 w-4 text-blue-800" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpiData.totalTokens.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Total token digunakan</p>
-          </CardContent>
-        </Card>
+        <AnimatedMetricCard
+          title="Total Token"
+          value={kpiData.totalTokens}
+          suffix=""
+          icon={<Cpu className="h-5 w-5 text-blue-800" />}
+          borderColor="border-blue-800"
+          subtitle="Total token digunakan"
+          decimals={0}
+        />
       </div>
 
       {/* Filters */}
-      <Card>
+      <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-xl">Filter & Pencarian</CardTitle>
         </CardHeader>
@@ -785,7 +780,7 @@ const WorkflowExecution = () => {
       </Card>
 
       {/* Data Table */}
-      <Card>
+      <Card className="shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Riwayat Eksekusi ({totalCount})</CardTitle>
@@ -964,6 +959,90 @@ const WorkflowExecution = () => {
 
         </DialogContent>
       </Dialog>
+      </div>
+    </div>
+  );
+};
+
+const useCountUp = (end, duration = 2000, decimals = 0, prefix = '', suffix = '', useLocaleString = false) => {
+  const [count, setCount] = useState(0);
+  const [displayValue, setDisplayValue] = useState('0');
+  const countRef = useRef(0);
+  const startTimeRef = useRef(null);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    const endValue = parseFloat(end) || 0;
+    startTimeRef.current = null;
+    countRef.current = 0;
+
+    const animate = (timestamp) => {
+      if (!startTimeRef.current) startTimeRef.current = timestamp;
+      const progress = timestamp - startTimeRef.current;
+      const percentage = Math.min(progress / duration, 1);
+      
+      // Easing function (easeOutExpo)
+      const easeOut = percentage === 1 ? 1 : 1 - Math.pow(2, -10 * percentage);
+      
+      const currentCount = endValue * easeOut;
+      countRef.current = currentCount;
+      setCount(currentCount);
+
+      if (useLocaleString) {
+        setDisplayValue(Math.round(currentCount).toLocaleString());
+      } else if (decimals > 0) {
+        setDisplayValue(currentCount.toFixed(decimals));
+      } else {
+        setDisplayValue(Math.round(currentCount).toString());
+      }
+
+      if (percentage < 1) {
+        rafRef.current = requestAnimationFrame(animate);
+      } else {
+        setCount(endValue);
+        if (useLocaleString) {
+          setDisplayValue(Math.round(endValue).toLocaleString());
+        } else if (decimals > 0) {
+          setDisplayValue(endValue.toFixed(decimals));
+        } else {
+          setDisplayValue(Math.round(endValue).toString());
+        }
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [end, duration, decimals, useLocaleString]);
+
+  return `${prefix}${displayValue}${suffix}`;
+};
+
+const AnimatedMetricCard = ({ 
+  title, 
+  value, 
+  icon, 
+  borderColor, 
+  subtitle, 
+  decimals = 0, 
+  prefix = '', 
+  suffix = '',
+  useLocaleString = false 
+}) => {
+  const animatedValue = useCountUp(value, 2000, decimals, prefix, suffix, useLocaleString);
+
+  return (
+    <div className={`bg-white rounded-lg shadow-lg border-l-4 ${borderColor} p-6 hover:shadow-xl transition-shadow`}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-medium">{title}</h3>
+        {icon}
+      </div>
+      <div className="text-2xl font-bold text-gray-900 mb-1">{animatedValue}</div>
+      <p className="text-xs text-gray-500">{subtitle}</p>
     </div>
   );
 };

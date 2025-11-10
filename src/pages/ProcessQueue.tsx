@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -257,6 +257,7 @@ const ProcessQueue = () => {
 
   return (
     <div className="space-y-6 pl-4 bg-gray-50 min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Process Queue</h2>
@@ -266,42 +267,39 @@ const ProcessQueue = () => {
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="shadow-lg border-l-4 border-yellow-500 transition-shadow hover:shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Antrian Pending</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpiData.newQueue}</div>
-            <p className="text-xs text-muted-foreground">Menunggu diproses</p>
-          </CardContent>
-        </Card>
+        <AnimatedMetricCard
+          title="Antrian Pending"
+          value={kpiData.newQueue}
+          suffix=""
+          icon={<Clock className="h-5 w-5 text-yellow-500" />}
+          borderColor="border-yellow-500"
+          subtitle="Menunggu diproses"
+          decimals={0}
+        />
 
-        <Card className="shadow-lg border-l-4 border-green-600 transition-shadow hover:shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Selesai Diproses</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpiData.processed}</div>
-            <p className="text-xs text-muted-foreground">Status Done</p>
-          </CardContent>
-        </Card>
+        <AnimatedMetricCard
+          title="Selesai Diproses"
+          value={kpiData.processed}
+          suffix=""
+          icon={<CheckCircle className="h-5 w-5 text-green-600" />}
+          borderColor="border-green-600"
+          subtitle="Status Done"
+          decimals={0}
+        />
 
-        <Card className="shadow-lg border-l-4 border-red-500 transition-shadow hover:shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gagal Diproses</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpiData.failed}</div>
-            <p className="text-xs text-muted-foreground">Perlu perhatian</p>
-          </CardContent>
-        </Card>
+        <AnimatedMetricCard
+          title="Gagal Diproses"
+          value={kpiData.failed}
+          suffix=""
+          icon={<AlertTriangle className="h-5 w-5 text-destructive" />}
+          borderColor="border-red-500"
+          subtitle="Perlu perhatian"
+          decimals={0}
+        />
       </div>
 
       {/* Filters */}
-      <Card>
+      <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>Filter & Pencarian</CardTitle>
         </CardHeader>
@@ -368,7 +366,7 @@ const ProcessQueue = () => {
       </Card>
 
       {/* Queue Table */}
-      <Card>
+      <Card className="shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Daftar Antrian ({totalCount})</CardTitle>
@@ -545,11 +543,6 @@ const ProcessQueue = () => {
               </div>
 
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Queue ID</p>
-                <p className="text-sm font-mono bg-muted p-2 rounded mt-1">{selectedQueueItem.id}</p>
-              </div>
-
-              <div>
                 <p className="text-sm font-medium text-muted-foreground">Execution ID</p>
                 <p className="text-sm font-mono bg-muted p-2 rounded mt-1">{selectedQueueItem.execution_id}</p>
               </div>
@@ -568,6 +561,90 @@ const ProcessQueue = () => {
           )}
         </DialogContent>
       </Dialog>
+      </div>
+    </div>
+  );
+};
+
+const useCountUp = (end, duration = 2000, decimals = 0, prefix = '', suffix = '', useLocaleString = false) => {
+  const [count, setCount] = useState(0);
+  const [displayValue, setDisplayValue] = useState('0');
+  const countRef = useRef(0);
+  const startTimeRef = useRef(null);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    const endValue = parseFloat(end) || 0;
+    startTimeRef.current = null;
+    countRef.current = 0;
+
+    const animate = (timestamp) => {
+      if (!startTimeRef.current) startTimeRef.current = timestamp;
+      const progress = timestamp - startTimeRef.current;
+      const percentage = Math.min(progress / duration, 1);
+      
+      // Easing function (easeOutExpo)
+      const easeOut = percentage === 1 ? 1 : 1 - Math.pow(2, -10 * percentage);
+      
+      const currentCount = endValue * easeOut;
+      countRef.current = currentCount;
+      setCount(currentCount);
+
+      if (useLocaleString) {
+        setDisplayValue(Math.round(currentCount).toLocaleString());
+      } else if (decimals > 0) {
+        setDisplayValue(currentCount.toFixed(decimals));
+      } else {
+        setDisplayValue(Math.round(currentCount).toString());
+      }
+
+      if (percentage < 1) {
+        rafRef.current = requestAnimationFrame(animate);
+      } else {
+        setCount(endValue);
+        if (useLocaleString) {
+          setDisplayValue(Math.round(endValue).toLocaleString());
+        } else if (decimals > 0) {
+          setDisplayValue(endValue.toFixed(decimals));
+        } else {
+          setDisplayValue(Math.round(endValue).toString());
+        }
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [end, duration, decimals, useLocaleString]);
+
+  return `${prefix}${displayValue}${suffix}`;
+};
+
+const AnimatedMetricCard = ({ 
+  title, 
+  value, 
+  icon, 
+  borderColor, 
+  subtitle, 
+  decimals = 0, 
+  prefix = '', 
+  suffix = '',
+  useLocaleString = false 
+}) => {
+  const animatedValue = useCountUp(value, 2000, decimals, prefix, suffix, useLocaleString);
+
+  return (
+    <div className={`bg-white rounded-lg shadow-lg border-l-4 ${borderColor} p-6 hover:shadow-xl transition-shadow`}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-medium">{title}</h3>
+        {icon}
+      </div>
+      <div className="text-2xl font-bold text-gray-900 mb-1">{animatedValue}</div>
+      <p className="text-xs text-gray-500">{subtitle}</p>
     </div>
   );
 };

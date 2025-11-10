@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AlertCircle, Info, Search, Loader2, Download, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { AlertCircle, Search, CircleCheckBig, Download, RefreshCw, ChevronLeft, ChevronRight, Cpu, Network, Timer } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
@@ -76,7 +76,6 @@ interface MetricsData {
   totalNodes: number;
   successNodes: number;
   errorNodes: number;
-  totalCost: number;
   totalTokens: number;
   avgExecutionTime: number;
   totalPromptTokens: number;
@@ -232,7 +231,6 @@ const DetailExecution = () => {
         const errorNodes = processedData.filter(n => n.has_error).length;
         const successNodes = processedData.filter(n => n.execution_status === "success").length;
         
-        const totalCost = processedData.reduce((sum, n) => sum + Number(n.estimated_cost_usd || 0), 0);
         const totalTokens = processedData.reduce((sum, n) => sum + (n.total_tokens || 0), 0);
         const totalPromptTokens = processedData.reduce((sum, n) => sum + (n.prompt_tokens || 0), 0);
         const totalCompletionTokens = processedData.reduce((sum, n) => sum + (n.completion_tokens || 0), 0);
@@ -244,7 +242,6 @@ const DetailExecution = () => {
           totalNodes,
           successNodes,
           errorNodes,
-          totalCost,
           totalTokens,
           avgExecutionTime,
           totalPromptTokens,
@@ -425,7 +422,8 @@ const DetailExecution = () => {
   }
 
   return (
-    <div className="space-y-6 pl-4 bg-gray-50 min-h-screen">
+    <div className="space-y-6 pl-4 pr-4 bg-gray-50 min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-6">
       <div>
         <h2 className="text-3xl font-extrabold tracking-tight text-gray-800">Execution Log Dashboard</h2>
         <p className="text-muted-foreground">Ringkasan dan detail semua eksekusi node dari sistem alur kerja Anda.</p>
@@ -434,108 +432,53 @@ const DetailExecution = () => {
       {/* Metrics Cards */}
       {metrics && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="shadow-lg border-l-4 border-blue-500 transition-shadow hover:shadow-xl">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Nodes</CardTitle>
-              <Info className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.totalNodes}</div>
-            </CardContent>
-          </Card>
+          <AnimatedMetricCard
+            title="Total Nodes"
+            value={metrics.totalNodes}
+            suffix=""
+            icon={<Network className="h-5 w-5 text-blue-500" />}
+            borderColor="border-blue-500"
+            subtitle="Tereksekusi"
+            decimals={0}
+          />
 
-          <Card className="shadow-lg border-l-4 border-green-500 transition-shadow hover:shadow-xl">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Success Rate</CardTitle>
-              <Loader2 className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {metrics.totalNodes > 0 
+          <AnimatedMetricCard
+            title="Success Rate"
+            value={metrics.totalNodes > 0 
                   ? ((metrics.successNodes / metrics.totalNodes) * 100).toFixed(1) 
-                  : 0}%
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {metrics.successNodes} sukses, {metrics.errorNodes} error
-              </p>
-            </CardContent>
-          </Card>
+                  : 0}
+            suffix="%"
+            icon={<CircleCheckBig className="h-5 w-5 text-green-500" />}
+            borderColor="border-green-500"
+            subtitle={`${metrics.successNodes} sukses, ${metrics.errorNodes} error`}
+            decimals={0}
+          />
 
-          <Card className="shadow-lg border-l-4 border-yellow-500 transition-shadow hover:shadow-xl">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Avg Execution</CardTitle>
-              <Info className="h-4 w-4 text-yellow-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatExecutionTime(metrics.avgExecutionTime)}</div>
-            </CardContent>
-          </Card>
+          <AnimatedMetricCard
+            title="Avg Execution"
+            value={formatExecutionTime(metrics.avgExecutionTime)}
+            suffix="s"
+            icon={<Timer className="h-5 w-5 text-yellow-500" />}
+            borderColor="border-yellow-500"
+            subtitle="In Second"
+            decimals={0}
+          />
+
+          <AnimatedMetricCard
+            title="Total Tokens"
+            value={metrics.totalTokens}
+            suffix=""
+            icon={<Cpu className="h-5 w-5 text-orange-500" />}
+            borderColor="border-orange-500"
+            subtitle={`Prompt: ${metrics.totalPromptTokens} | Completion: ${metrics.totalCompletionTokens}`}
+            decimals={0}
+          />
           
-          <Card className="shadow-lg border-l-4 border-purple-500 transition-shadow hover:shadow-xl">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Cost</CardTitle>
-              <Info className="h-4 w-4 text-purple-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold font-mono">${metrics.totalCost.toFixed(4)}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-l-4 border-orange-500 transition-shadow hover:shadow-xl">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Tokens</CardTitle>
-              <Info className="h-4 w-4 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.totalTokens.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Prompt: {metrics.totalPromptTokens.toLocaleString()} | Completion: {metrics.totalCompletionTokens.toLocaleString()}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-l-4 border-red-500 transition-shadow hover:shadow-xl">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Error Rate</CardTitle>
-              <AlertCircle className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">
-                {metrics.totalNodes > 0 
-                  ? ((metrics.errorNodes / metrics.totalNodes) * 100).toFixed(1) 
-                  : 0}%
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-l-4 border-indigo-500 transition-shadow hover:shadow-xl">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Avg Cost/Node</CardTitle>
-              <Info className="h-4 w-4 text-indigo-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold font-mono">
-                ${metrics.totalNodes > 0 ? (metrics.totalCost / metrics.totalNodes).toFixed(6) : "0.000000"}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-l-4 border-teal-500 transition-shadow hover:shadow-xl">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Avg Tokens/Node</CardTitle>
-              <Info className="h-4 w-4 text-teal-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {metrics.totalNodes > 0 ? Math.round(metrics.totalTokens / metrics.totalNodes).toLocaleString() : 0}
-              </div>
-            </CardContent>
-          </Card>
         </div>
       )}
 
       {/* Filters */}
-      <Card className="shadow-md">
+      <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-xl">Filter & Pencarian Log</CardTitle>
         </CardHeader>
@@ -579,7 +522,7 @@ const DetailExecution = () => {
       </Card>
 
       {/* Table */}
-      <Card className="shadow-md">
+      <Card className="shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Daftar Node Executions ({totalCount})</CardTitle>
@@ -793,8 +736,27 @@ const DetailExecution = () => {
 
               <div className="space-y-2 border-b pb-4">
                 <DetailItem title="Execution ID" value={<p className="text-xs font-mono bg-gray-200 p-2 rounded truncate select-all">{selectedNode.execution_id}</p>} />
-                <DetailItem title="Node ID" value={<p className="text-xs font-mono bg-gray-200 p-2 rounded truncate select-all">{selectedNode.node_id || "N/A"}</p>} />
-                <DetailItem title="UUID" value={<p className="text-xs font-mono bg-gray-200 p-2 rounded truncate select-all">{selectedNode.id}</p>} />
+                <DetailItem
+                  title="Output Data"
+                  value={
+                    <textarea
+                      className="
+                        text-xs font-mono bg-gray-200 p-2 rounded 
+                        w-full resize-none overflow-x-hidden 
+                        whitespace-pre-wrap break-all
+                      "
+                      value={selectedNode.output_data_sample || ""}
+                      readOnly
+                      rows={1}
+                      onChange={() => {}}
+                      ref={(el) => {
+                        if (!el) return;
+                        el.style.height = "auto";
+                        el.style.height = `${el.scrollHeight}px`;
+                      }}
+                    />
+                  }
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-4">
@@ -806,7 +768,7 @@ const DetailExecution = () => {
               {selectedNode.output_summary && (
                 <div className="border-b pb-4">
                   <DetailItem 
-                    title="Output Summary" 
+                    title="Output Model AI" 
                     value={<p className="text-sm bg-blue-50 p-3 rounded border border-blue-200">{selectedNode.output_summary}</p>} 
                   />
                 </div>
@@ -863,6 +825,7 @@ const DetailExecution = () => {
           )}
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 };
@@ -873,5 +836,88 @@ const DetailItem = ({ title, value }: { title: string, value: React.ReactNode })
         {value}
     </div>
 );
+
+const useCountUp = (end, duration = 2000, decimals = 0, prefix = '', suffix = '', useLocaleString = false) => {
+  const [count, setCount] = useState(0);
+  const [displayValue, setDisplayValue] = useState('0');
+  const countRef = useRef(0);
+  const startTimeRef = useRef(null);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    const endValue = parseFloat(end) || 0;
+    startTimeRef.current = null;
+    countRef.current = 0;
+
+    const animate = (timestamp) => {
+      if (!startTimeRef.current) startTimeRef.current = timestamp;
+      const progress = timestamp - startTimeRef.current;
+      const percentage = Math.min(progress / duration, 1);
+      
+      // Easing function (easeOutExpo)
+      const easeOut = percentage === 1 ? 1 : 1 - Math.pow(2, -10 * percentage);
+      
+      const currentCount = endValue * easeOut;
+      countRef.current = currentCount;
+      setCount(currentCount);
+
+      if (useLocaleString) {
+        setDisplayValue(Math.round(currentCount).toLocaleString());
+      } else if (decimals > 0) {
+        setDisplayValue(currentCount.toFixed(decimals));
+      } else {
+        setDisplayValue(Math.round(currentCount).toString());
+      }
+
+      if (percentage < 1) {
+        rafRef.current = requestAnimationFrame(animate);
+      } else {
+        setCount(endValue);
+        if (useLocaleString) {
+          setDisplayValue(Math.round(endValue).toLocaleString());
+        } else if (decimals > 0) {
+          setDisplayValue(endValue.toFixed(decimals));
+        } else {
+          setDisplayValue(Math.round(endValue).toString());
+        }
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [end, duration, decimals, useLocaleString]);
+
+  return `${prefix}${displayValue}${suffix}`;
+};
+
+const AnimatedMetricCard = ({ 
+  title, 
+  value, 
+  icon, 
+  borderColor, 
+  subtitle, 
+  decimals = 0, 
+  prefix = '', 
+  suffix = '',
+  useLocaleString = false 
+}) => {
+  const animatedValue = useCountUp(value, 2000, decimals, prefix, suffix, useLocaleString);
+
+  return (
+    <div className={`bg-white rounded-lg shadow-lg border-l-4 ${borderColor} p-6 hover:shadow-xl transition-shadow`}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-medium">{title}</h3>
+        {icon}
+      </div>
+      <div className="text-2xl font-bold text-gray-900 mb-1">{animatedValue}</div>
+      <p className="text-xs text-gray-500">{subtitle}</p>
+    </div>
+  );
+};
 
 export default DetailExecution;
