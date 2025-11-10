@@ -256,7 +256,7 @@ const ProcessQueue = () => {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
+    <div className="space-y-6 pl-4 bg-gray-50 min-h-screen">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Process Queue</h2>
@@ -266,10 +266,10 @@ const ProcessQueue = () => {
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
+        <Card className="shadow-lg border-l-4 border-yellow-500 transition-shadow hover:shadow-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Antrian Pending</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{kpiData.newQueue}</div>
@@ -277,7 +277,7 @@ const ProcessQueue = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-lg border-l-4 border-green-600 transition-shadow hover:shadow-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Selesai Diproses</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-600" />
@@ -288,7 +288,7 @@ const ProcessQueue = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-lg border-l-4 border-red-500 transition-shadow hover:shadow-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Gagal Diproses</CardTitle>
             <AlertTriangle className="h-4 w-4 text-destructive" />

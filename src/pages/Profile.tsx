@@ -175,7 +175,7 @@ const Profile = () => {
       </div>
 
       {/* User Info Card */}
-      <Card>
+      <Card className="shadow-lg transition-shadow hover:shadow-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="w-5 h-5" />
@@ -238,7 +238,7 @@ const Profile = () => {
       </Card>
 
       {/* Edit Profile Card */}
-      <Card>
+      <Card className="shadow-lg transition-shadow hover:shadow-xl">
         <CardHeader>
           <CardTitle>Edit Profile</CardTitle>
           <CardDescription>Perbarui informasi profile Anda</CardDescription>
@@ -283,7 +283,7 @@ const Profile = () => {
       </Card>
 
       {/* Change Password Card */}
-      <Card>
+      <Card className="shadow-lg transition-shadow hover:shadow-xl">
         <CardHeader>
           <CardTitle>Ubah Password</CardTitle>
           <CardDescription>Perbarui password untuk keamanan akun Anda</CardDescription>

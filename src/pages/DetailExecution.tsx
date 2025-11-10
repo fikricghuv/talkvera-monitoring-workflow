@@ -425,7 +425,7 @@ const DetailExecution = () => {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
+    <div className="space-y-6 pl-4 bg-gray-50 min-h-screen">
       <div>
         <h2 className="text-3xl font-extrabold tracking-tight text-gray-800">Execution Log Dashboard</h2>
         <p className="text-muted-foreground">Ringkasan dan detail semua eksekusi node dari sistem alur kerja Anda.</p>

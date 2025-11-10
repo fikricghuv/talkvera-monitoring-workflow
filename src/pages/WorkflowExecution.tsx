@@ -661,7 +661,7 @@ const WorkflowExecution = () => {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
+    <div className="space-y-6 pl-4 bg-gray-50 min-h-screen">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Workflow Executions</h2>
         <p className="text-muted-foreground">Monitor dan analisis eksekusi workflow</p>
@@ -669,10 +669,10 @@ const WorkflowExecution = () => {
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="shadow-lg border-l-4 border-blue-500 transition-shadow hover:shadow-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Eksekusi</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <Activity className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{kpiData.totalExecutions}</div>
@@ -680,14 +680,14 @@ const WorkflowExecution = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-lg border-l-4 border-red-500 transition-shadow hover:shadow-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Eksekusi Gagal</CardTitle>
             <AlertCircle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{kpiData.failedExecutions}</div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-destructive">
               {kpiData.totalExecutions > 0
                 ? `${((kpiData.failedExecutions / kpiData.totalExecutions) * 100).toFixed(1)}% dari total`
                 : "Tidak ada data"}
@@ -695,10 +695,10 @@ const WorkflowExecution = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-lg border-l-4 border-green-600 transition-shadow hover:shadow-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Biaya (USD)</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <DollarSign className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${kpiData.totalCost.toFixed(4)}</div>
@@ -706,10 +706,10 @@ const WorkflowExecution = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-lg border-l-4 border-green-800 transition-shadow hover:shadow-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Tokens</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
+            <Zap className="h-4 w-4 text-blue-800" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{kpiData.totalTokens.toLocaleString()}</div>

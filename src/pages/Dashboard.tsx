@@ -170,6 +170,15 @@ const Dashboard = () => {
 
       const dailyExecutions = Array.from(dailyMap.entries())
         .map(([date, data]) => ({ date, ...data }))
+        .sort((a, b) => {
+          const [dayA, monthA] = a.date.split(' ');
+          const [dayB, monthB] = b.date.split(' ');
+          const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+          const monthIndexA = monthNames.indexOf(monthA);
+          const monthIndexB = monthNames.indexOf(monthB);
+          if (monthIndexA !== monthIndexB) return monthIndexA - monthIndexB;
+          return parseInt(dayA) - parseInt(dayB);
+        })
         .slice(-14);
 
       // Top Workflows
@@ -202,6 +211,15 @@ const Dashboard = () => {
 
       const costByDay = Array.from(costMap.entries())
         .map(([date, cost]) => ({ date, cost: parseFloat(cost.toFixed(4)) }))
+        .sort((a, b) => {
+          const [dayA, monthA] = a.date.split(' ');
+          const [dayB, monthB] = b.date.split(' ');
+          const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+          const monthIndexA = monthNames.indexOf(monthA);
+          const monthIndexB = monthNames.indexOf(monthB);
+          if (monthIndexA !== monthIndexB) return monthIndexA - monthIndexB;
+          return parseInt(dayA) - parseInt(dayB);
+        })
         .slice(-14);
 
       // Token Usage by Day
@@ -213,6 +231,15 @@ const Dashboard = () => {
 
       const tokenUsage = Array.from(tokenMap.entries())
         .map(([date, tokens]) => ({ date, tokens }))
+        .sort((a, b) => {
+          const [dayA, monthA] = a.date.split(' ');
+          const [dayB, monthB] = b.date.split(' ');
+          const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+          const monthIndexA = monthNames.indexOf(monthA);
+          const monthIndexB = monthNames.indexOf(monthB);
+          if (monthIndexA !== monthIndexB) return monthIndexA - monthIndexB;
+          return parseInt(dayA) - parseInt(dayB);
+        })
         .slice(-14);
 
       setMetrics({
@@ -274,7 +301,7 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
+    <div className="space-y-6 pl-4 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -303,10 +330,10 @@ const Dashboard = () => {
       <div>
         <h3 className="text-lg font-semibold mb-3">Metrik Workflow Execution</h3>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
+          <Card className="shadow-lg border-l-4 border-blue-500 transition-shadow hover:shadow-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Eksekusi</CardTitle>
-              <PlayCircle className="h-4 w-4 text-muted-foreground" />
+              <PlayCircle className="h-4 w-4 text-blue-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{metrics.workflows.total}</div>
@@ -317,7 +344,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-lg border-l-4 border-green-600 transition-shadow hover:shadow-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
               <TrendingUp className="h-4 w-4 text-green-600" />
@@ -332,10 +359,10 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-lg border-l-4 border-blue-900 transition-shadow hover:shadow-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Avg Execution Time</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Clock className="h-4 w-4 text-blue-900" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -345,10 +372,10 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-lg border-l-4 border-green-800 transition-shadow hover:shadow-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <DollarSign className="h-4 w-4 text-green-800" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">${metrics.workflows.totalCost.toFixed(4)}</div>
@@ -361,19 +388,22 @@ const Dashboard = () => {
       {/* Node Execution Metrics */}
       <div>
         <h3 className="text-lg font-semibold mb-3">Metrik Node Execution</h3>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-3">
+          <Card className="shadow-lg border-l-4 border-blue-500 transition-shadow hover:shadow-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Nodes</CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <BarChart3 className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{metrics.nodes.total}</div>
-              <p className="text-xs text-muted-foreground">Node yang dieksekusi</p>
+              <p className="text-xs text-muted-foreground">
+                <span className="text-green-600">{metrics.nodes.successful} berhasil</span> · 
+                <span className="text-red-600 ml-1">{metrics.nodes.failed} gagal</span>
+              </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-lg border-l-4 border-green-600 transition-shadow hover:shadow-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
               <CheckCircle className="h-4 w-4 text-green-600" />
@@ -384,31 +414,18 @@ const Dashboard = () => {
                   ? ((metrics.nodes.successful / metrics.nodes.total) * 100).toFixed(1)
                   : 0}%
               </div>
-              <p className="text-xs text-muted-foreground">
-                {metrics.nodes.successful} berhasil · {metrics.nodes.failed} gagal
-              </p>
+              <p className="text-xs text-muted-foreground">Tingkat keberhasilan</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-lg border-l-4 border-blue-900 transition-shadow hover:shadow-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Avg Tokens/Node</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
+              <Activity className="h-4 w-4 text-blue-900" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{metrics.nodes.avgTokensPerExecution.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">Token per eksekusi node</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Node Cost</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${metrics.nodes.totalCost.toFixed(4)}</div>
-              <p className="text-xs text-muted-foreground">Total biaya node</p>
             </CardContent>
           </Card>
         </div>
@@ -418,10 +435,10 @@ const Dashboard = () => {
       <div>
         <h3 className="text-lg font-semibold mb-3">Status Antrian Proses</h3>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <Card>
+          <Card className="shadow-lg border-l-4 border-blue-500 transition-shadow hover:shadow-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Antrian</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
+              <Activity className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{metrics.queue.total}</div>
@@ -429,7 +446,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-lg border-l-4 border-yellow-500 transition-shadow hover:shadow-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending</CardTitle>
               <Clock className="h-4 w-4 text-yellow-500" />
@@ -440,10 +457,10 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-lg border-l-4 border-blue-800 transition-shadow hover:shadow-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Processing</CardTitle>
-              <Zap className="h-4 w-4 text-blue-500" />
+              <Zap className="h-4 w-4 text-blue-800" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{metrics.queue.processing}</div>
@@ -451,7 +468,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-lg border-l-4 border-green-600 transition-shadow hover:shadow-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Done</CardTitle>
               <CheckCircle className="h-4 w-4 text-green-600" />
@@ -462,7 +479,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-lg border-l-4 border-red-500 transition-shadow hover:shadow-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Failed</CardTitle>
               <AlertTriangle className="h-4 w-4 text-destructive" />
@@ -478,7 +495,7 @@ const Dashboard = () => {
       {/* Charts */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Daily Executions Trend */}
-        <Card>
+        <Card className="shadow-lg transition-shadow hover:shadow-xl">
           <CardHeader>
             <CardTitle>Tren Eksekusi Harian</CardTitle>
           </CardHeader>
@@ -499,7 +516,7 @@ const Dashboard = () => {
         </Card>
 
         {/* Queue Status Distribution */}
-        <Card>
+        <Card className="shadow-lg transition-shadow hover:shadow-xl">
           <CardHeader>
             <CardTitle>Distribusi Status Antrian</CardTitle>
           </CardHeader>
@@ -527,7 +544,7 @@ const Dashboard = () => {
         </Card>
 
         {/* Top Workflows */}
-        <Card>
+        <Card className="shadow-lg transition-shadow hover:shadow-xl">
           <CardHeader>
             <CardTitle>Top 5 Workflows</CardTitle>
           </CardHeader>
@@ -545,7 +562,7 @@ const Dashboard = () => {
         </Card>
 
         {/* Cost Trend */}
-        <Card>
+        <Card className="shadow-lg transition-shadow hover:shadow-xl">
           <CardHeader>
             <CardTitle>Tren Biaya Harian</CardTitle>
           </CardHeader>
@@ -564,7 +581,7 @@ const Dashboard = () => {
       </div>
 
       {/* Token Usage Trend */}
-      <Card>
+      <Card className="shadow-lg transition-shadow hover:shadow-xl">
         <CardHeader>
           <CardTitle>Tren Penggunaan Token</CardTitle>
         </CardHeader>
@@ -575,7 +592,7 @@ const Dashboard = () => {
               <XAxis dataKey="date" />
               <YAxis />
               <Tooltip formatter={(value) => Number(value).toLocaleString()} />
-              <Bar dataKey="tokens" fill="#8b5cf6" name="Total Tokens" />
+              <Bar dataKey="tokens" fill="#10b981" name="Total Tokens" />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
