@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AlertCircle, Search, CircleCheckBig, Download, RefreshCw, ChevronLeft, ChevronRight, Cpu, Network, Timer } from "lucide-react";
+import { AlertCircle, Search, CircleCheckBig, Download, RefreshCw, ChevronLeft, ChevronRight, Cpu, Network, Timer, Calendar } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
@@ -90,8 +90,10 @@ const DetailExecution = () => {
   
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [executionIdFilter, setExecutionIdFilter] = useState<string>("all");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
   
   // Modal State
   const [selectedNode, setSelectedNode] = useState<NodeExecution | null>(null);
@@ -103,7 +105,18 @@ const DetailExecution = () => {
 
   // Unique values for filters
   const [uniqueStatuses, setUniqueStatuses] = useState<string[]>([]);
-  const [uniqueExecutionIds, setUniqueExecutionIds] = useState<string[]>([]);
+
+  // Debounce effect untuk search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Only trigger search if 3 or more characters, or empty (to clear)
+      if (searchTerm.length >= 3 || searchTerm.length === 0) {
+        setDebouncedSearchTerm(searchTerm);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   useEffect(() => {
     fetchUniqueValues();
@@ -112,7 +125,7 @@ const DetailExecution = () => {
   useEffect(() => {
     fetchNodeExecutions();
     fetchMetrics();
-  }, [currentPage, itemsPerPage, searchTerm, statusFilter, executionIdFilter]);
+  }, [currentPage, itemsPerPage, debouncedSearchTerm, statusFilter, startDate, endDate]);
 
   const fetchUniqueValues = async () => {
     try {
@@ -125,19 +138,6 @@ const DetailExecution = () => {
       if (statusData) {
         const statuses = Array.from(new Set(statusData.map(d => d.execution_status))).sort();
         setUniqueStatuses(statuses as string[]);
-      }
-
-      // Fetch unique execution IDs
-      const { data: execIdData } = await supabase
-        .from("dt_node_executions")
-        .select("execution_id")
-        .not("execution_id", "is", null)
-        .order("inserted_at", { ascending: false })
-        .limit(50);
-      
-      if (execIdData) {
-        const execIds = Array.from(new Set(execIdData.map(d => d.execution_id)));
-        setUniqueExecutionIds(execIds as string[]);
       }
     } catch (error) {
       console.error("Error fetching unique values:", error);
@@ -153,16 +153,25 @@ const DetailExecution = () => {
         .select("*", { count: 'exact' });
 
       // Apply filters
-      if (searchTerm) {
-        query = query.or(`node_name.ilike.%${searchTerm}%,node_type.ilike.%${searchTerm}%,model_name.ilike.%${searchTerm}%`);
+      if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
+        query = query.or(`node_name.ilike.%${debouncedSearchTerm}%,model_name.ilike.%${debouncedSearchTerm}%,execution_id.ilike.%${debouncedSearchTerm}%`);
       }
 
       if (statusFilter !== "all") {
         query = query.eq("execution_status", statusFilter);
       }
 
-      if (executionIdFilter !== "all") {
-        query = query.eq("execution_id", executionIdFilter);
+      // Apply date range filter
+      if (startDate) {
+        const startDateTime = new Date(startDate);
+        startDateTime.setHours(0, 0, 0, 0);
+        query = query.gte("inserted_at", startDateTime.toISOString());
+      }
+
+      if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        query = query.lte("inserted_at", endDateTime.toISOString());
       }
 
       // Apply pagination
@@ -201,16 +210,25 @@ const DetailExecution = () => {
         .select("*");
 
       // Apply same filters as main query
-      if (searchTerm) {
-        query = query.or(`node_name.ilike.%${searchTerm}%,node_type.ilike.%${searchTerm}%,model_name.ilike.%${searchTerm}%`);
+      if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
+        query = query.or(`node_name.ilike.%${debouncedSearchTerm}%,model_name.ilike.%${debouncedSearchTerm}%,execution_id.ilike.%${debouncedSearchTerm}%`);
       }
 
       if (statusFilter !== "all") {
         query = query.eq("execution_status", statusFilter);
       }
 
-      if (executionIdFilter !== "all") {
-        query = query.eq("execution_id", executionIdFilter);
+      // Apply date range filter
+      if (startDate) {
+        const startDateTime = new Date(startDate);
+        startDateTime.setHours(0, 0, 0, 0);
+        query = query.gte("inserted_at", startDateTime.toISOString());
+      }
+
+      if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        query = query.lte("inserted_at", endDateTime.toISOString());
       }
 
       const { data, error } = await query;
@@ -311,7 +329,7 @@ const DetailExecution = () => {
 
   useEffect(() => {
     handleFilterChange();
-  }, [searchTerm, statusFilter, executionIdFilter]);
+  }, [debouncedSearchTerm, statusFilter, startDate, endDate]);
 
   const handleDownloadReport = async () => {
     toast.info("Memproses download report...");
@@ -321,16 +339,25 @@ const DetailExecution = () => {
         .from("dt_node_executions")
         .select("*");
 
-      if (searchTerm) {
-        query = query.or(`node_name.ilike.%${searchTerm}%,node_type.ilike.%${searchTerm}%,model_name.ilike.%${searchTerm}%`);
+      if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
+        query = query.or(`node_name.ilike.%${debouncedSearchTerm}%,node_type.ilike.%${debouncedSearchTerm}%,model_name.ilike.%${debouncedSearchTerm}%,execution_id.ilike.%${debouncedSearchTerm}%`);
       }
 
       if (statusFilter !== "all") {
         query = query.eq("execution_status", statusFilter);
       }
 
-      if (executionIdFilter !== "all") {
-        query = query.eq("execution_id", executionIdFilter);
+      // Apply date range filter
+      if (startDate) {
+        const startDateTime = new Date(startDate);
+        startDateTime.setHours(0, 0, 0, 0);
+        query = query.gte("inserted_at", startDateTime.toISOString());
+      }
+
+      if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        query = query.lte("inserted_at", endDateTime.toISOString());
       }
 
       const { data, error } = await query
@@ -425,7 +452,7 @@ const DetailExecution = () => {
     <div className="space-y-6 pl-4 pr-4 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
       <div>
-        <h2 className="text-3xl font-extrabold tracking-tight text-gray-800">Execution Log Dashboard</h2>
+        <h2 className="text-3xl font-extrabold tracking-tight text-gray-800">Node Executions</h2>
         <p className="text-muted-foreground">Ringkasan dan detail semua eksekusi node dari sistem alur kerja Anda.</p>
       </div>
 
@@ -487,11 +514,14 @@ const DetailExecution = () => {
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Cari Node Name, Type, atau Model..."
+                placeholder="Cari Exec ID, Node Name, Model (min 3 kar)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
+              {searchTerm.length > 0 && searchTerm.length < 3 && (
+                <p className="text-xs text-amber-600 mt-1">Minimal 3 karakter untuk pencarian</p>
+              )}
             </div>
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -506,18 +536,43 @@ const DetailExecution = () => {
               </SelectContent>
             </Select>
 
-            <Select value={executionIdFilter} onValueChange={setExecutionIdFilter}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Filter Execution ID" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Execution ID</SelectItem>
-                {uniqueExecutionIds.map(execId => (
-                  <SelectItem key={execId} value={execId}>{execId}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-4">
+              <Input
+                type="date"
+                placeholder="Tanggal Mulai"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="pl-7"
+              />
+
+              <Input
+                type="date"
+                placeholder="Tanggal Akhir"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="pl-7"
+              />
+            </div>
           </div>
+          
+          {(startDate || endDate) && (
+            <div className="mt-3 flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs">
+                Periode: {startDate || 'Awal'} - {endDate || 'Sekarang'}
+              </Badge>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  setStartDate("");
+                  setEndDate("");
+                }}
+                className="h-6 text-xs"
+              >
+                Reset Periode
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -549,7 +604,7 @@ const DetailExecution = () => {
         <CardContent>
           <div className="rounded-lg border overflow-x-auto shadow-inner bg-white">
             <Table>
-              <TableHeader className="sticky top-0 bg-gray-100 z-10 border-b">
+              <TableHeader className="sticky top-0 bg-muted/50 z-10 border-b">
                 <TableRow>
                   <TableHead className="w-[100px]">Execution ID</TableHead>
                   <TableHead>Node Name</TableHead>

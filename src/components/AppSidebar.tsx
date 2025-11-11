@@ -36,7 +36,7 @@ const menuItems = [
     icon: Workflow,
   },
   {
-    title: "Detail Execution Node",
+    title: "Detail Node Execution",
     url: "/node-execution",
     icon: FileClock,
   },
@@ -76,11 +76,6 @@ export function AppSidebar() {
             className="h-8 w-auto"
           />
         )}
-
-        {/* Span "Talkvera" Anda sudah disembunyikan dengan benar */}
-        {/* {!collapsed && (
-          <span className="ml-3 text-lg font-semibold">Talkvera</span>
-        )} */}
 
         {/* --- PERUBAHAN 3: Tombol toggle dengan margin dinamis --- */}
         <Button
