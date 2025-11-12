@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
-  Loader2, 
   User, 
   Mail, 
   Calendar, 
@@ -151,9 +151,91 @@ const Profile = () => {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">Memuat profile...</p>
+      <div className="space-y-6 max-w-4xl mx-auto">
+        {/* Header Skeleton */}
+        <div>
+          <Skeleton className="h-9 w-32 mb-2" />
+          <Skeleton className="h-5 w-80" />
+        </div>
+
+        {/* User Info Card Skeleton */}
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2 mb-2">
+              <Skeleton className="h-5 w-5" />
+              <Skeleton className="h-6 w-48" />
+            </div>
+            <Skeleton className="h-4 w-56" />
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Avatar and Name Skeleton */}
+            <div className="flex items-center gap-6">
+              <Skeleton className="w-20 h-20 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-64" />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* User Details Grid Skeleton */}
+            <div className="grid gap-4 md:grid-cols-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <Skeleton className="w-5 h-5 mt-0.5" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Edit Profile Card Skeleton */}
+        <Card className="shadow-lg">
+          <CardHeader>
+            <Skeleton className="h-6 w-32 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-3 w-48" />
+            </div>
+
+            <Skeleton className="h-10 w-40" />
+          </CardContent>
+        </Card>
+
+        {/* Change Password Card Skeleton */}
+        <Card className="shadow-lg">
+          <CardHeader>
+            <Skeleton className="h-6 w-36 mb-2" />
+            <Skeleton className="h-4 w-72" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+
+            <Skeleton className="h-10 w-36" />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -269,7 +351,7 @@ const Profile = () => {
           <Button onClick={handleUpdateProfile} disabled={isSaving}>
             {isSaving ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Skeleton className="w-4 h-4 mr-2 rounded-full" />
                 Menyimpan...
               </>
             ) : (
@@ -350,12 +432,12 @@ const Profile = () => {
           >
             {isSaving ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Skeleton className="w-4 h-4 mr-2 rounded-full" />
                 Mengubah...
               </>
             ) : (
               <>
-                <Shield className="w-4 w-4 mr-2" />
+                <Shield className="w-4 h-4 mr-2" />
                 Ubah Password
               </>
             )}
