@@ -1,23 +1,16 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  Cpu, 
   Clock, 
-  AlertTriangle, 
   CheckCircle, 
   RefreshCw,
-  LoaderCircle,
   DollarSign,
-  Layers,
   PlayCircle,
-  ListOrdered,
   Timer
 } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
-  LineChart, 
-  Line, 
   BarChart, 
   Bar, 
   XAxis, 
@@ -26,9 +19,6 @@ import {
   Tooltip, 
   Legend, 
   ResponsiveContainer, 
-  PieChart, 
-  Pie, 
-  Cell 
 } from "recharts";
 
 const Dashboard = () => {
@@ -105,14 +95,6 @@ const Dashboard = () => {
 
       if (workflowError) throw workflowError;
 
-      const { data: nodeData, error: nodeError } = await supabase
-        .from("dt_node_executions")
-        .select("*")
-        .gte("inserted_at", startDate.toISOString())
-        .lte("inserted_at", endDate.toISOString());
-
-      if (nodeError) throw nodeError;
-
       // Fetch workflow information untuk mendapatkan time_saved_per_execution
       const { data: workflowInfoData, error: workflowInfoError } = await supabase
         .from("dt_workflow_information" as any)
@@ -155,12 +137,6 @@ const Dashboard = () => {
       const totalTimeExecution = workflowData.reduce((sum, w) => sum + (w.total_execution_time_ms || 0), 0);
       const totalWorkflowCost = workflowData?.reduce((sum, w) => sum + (Number(w.estimated_cost_usd) || 0), 0) || 0;
       const totalWorkflowTokens = workflowData?.reduce((sum, w) => sum + (w.total_tokens || 0), 0) || 0;
-
-      const successfulNodes = nodeData?.filter(n => n.execution_status === "success" && !n.has_error).length || 0;
-      const failedNodes = nodeData?.filter(n => n.has_error || n.execution_status === "error").length || 0;
-      const avgTokensPerNode = nodeData?.length 
-        ? nodeData.reduce((sum, n) => sum + (n.total_tokens || 0), 0) / nodeData.length 
-        : 0;
 
       const dailyMap = new Map();
       workflowData?.forEach(w => {
@@ -256,12 +232,6 @@ const Dashboard = () => {
           totalTokens: totalWorkflowTokens,
           totalTimeSaved: totalTimeSaved, 
         },
-        nodes: {
-          total: nodeData?.length || 0,
-          successful: successfulNodes,
-          failed: failedNodes,
-          avgTokensPerExecution: Math.round(avgTokensPerNode),
-        },
         trends: {
           dailyExecutions,
           topWorkflows,
@@ -350,23 +320,6 @@ const Dashboard = () => {
                 <div key={i} className="bg-white rounded-lg shadow-lg border-l-4 border-gray-300 p-6">
                   <div className="flex items-center justify-between mb-4">
                     <Skeleton className="h-4 w-28" />
-                    <Skeleton className="h-5 w-5 rounded-full" />
-                  </div>
-                  <Skeleton className="h-8 w-20 mb-1" />
-                  <Skeleton className="h-3 w-32" />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Node Execution Metrics Skeleton */}
-          <div>
-            <Skeleton className="h-6 w-48 mb-3" />
-            <div className="grid gap-4 md:grid-cols-3">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="bg-white rounded-lg shadow-lg border-l-4 border-gray-300 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <Skeleton className="h-4 w-24" />
                     <Skeleton className="h-5 w-5 rounded-full" />
                   </div>
                   <Skeleton className="h-8 w-20 mb-1" />
@@ -508,42 +461,6 @@ const Dashboard = () => {
               borderColor="border-orange-600"
               subtitle="Total waktu eksekusi"
               decimals={2}
-            />
-          </div>
-        </div>
-
-        {/* Node Execution Metrics */}
-        <div>
-          <h3 className="text-lg font-semibold mb-3 text-gray-900">Metrik Node Execution</h3>
-          <div className="grid gap-4 md:grid-cols-3">
-            <AnimatedMetricCard
-              title="Total Nodes"
-              value={metrics.nodes.total}
-              icon={<Layers className="h-5 w-5 text-blue-500" />}
-              borderColor="border-blue-500"
-              subtitle={
-                <>
-                  <span className="text-green-600">{metrics.nodes.successful} berhasil</span> · 
-                  <span className="text-red-600 ml-1">{metrics.nodes.failed} gagal</span>
-                </>
-              }
-            />
-            <AnimatedMetricCard
-              title="Success Rate"
-              value={((metrics.nodes.successful / metrics.nodes.total) * 100).toFixed(1)}
-              suffix="%"
-              icon={<CheckCircle className="h-5 w-5 text-green-600" />}
-              borderColor="border-green-600"
-              subtitle="Tingkat keberhasilan"
-              decimals={1}
-            />
-            <AnimatedMetricCard
-              title="Avg Tokens/Node"
-              value={metrics.nodes.avgTokensPerExecution}
-              icon={<Cpu className="h-5 w-5 text-blue-900" />}
-              borderColor="border-blue-900"
-              subtitle="Token per eksekusi node"
-              useLocaleString={true}
             />
           </div>
         </div>
