@@ -96,14 +96,6 @@ const Dashboard = () => {
     const { startDate, endDate } = getDateRange();
 
     try {
-      const { data: queueData, error: queueError } = await supabase
-        .from("dt_execution_process_queue")
-        .select("*")
-        .gte("created_at", startDate.toISOString())
-        .lte("created_at", endDate.toISOString());
-
-      if (queueError) throw queueError;
-
       const { data: workflowData, error: workflowError } = await supabase
         .from("dt_workflow_executions")
         .select("*")
@@ -121,22 +113,46 @@ const Dashboard = () => {
 
       if (nodeError) throw nodeError;
 
-      const queueMetrics = {
-        pending: queueData?.filter(q => q.status === "pending").length || 0,
-        processing: queueData?.filter(q => q.status === "processing").length || 0,
-        done: queueData?.filter(q => q.status === "done").length || 0,
-        failed: queueData?.filter(q => q.status === "failed").length || 0,
-        total: queueData?.length || 0,
-      };
+      // Fetch workflow information untuk mendapatkan time_saved_per_execution
+      const { data: workflowInfoData, error: workflowInfoError } = await supabase
+        .from("dt_workflow_information" as any)
+        .select("workflow_id, time_saved_per_execution") as any;
+
+      if (workflowInfoError) {
+        console.error("Error fetching workflow info:", workflowInfoError);
+      }
+
+      // Buat map untuk akses cepat time_saved_per_execution berdasarkan workflow_id
+      const timeSavedMap = new Map<string, number>();
+      if (workflowInfoData && Array.isArray(workflowInfoData)) {
+        workflowInfoData.forEach((info: any) => {
+          timeSavedMap.set(info.workflow_id, info.time_saved_per_execution || 0);
+        });
+      }
 
       const successfulWorkflows = workflowData?.filter(w => w.status === "success" || !w.has_errors).length || 0;
       const failedWorkflows = workflowData?.filter(w => w.status === "error" || w.has_errors).length || 0;
       const runningWorkflows = workflowData?.filter(w => w.status === "running" || w.status === "waiting").length || 0;
+
+      let totalTimeSaved = 0;
+      workflowData?.forEach(execution => {
+        // Filter hanya workflow yang sukses
+        const isSuccess = execution.status === "success" || !execution.has_errors;
+        
+        if (isSuccess) {
+          const workflowId = (execution as any).workflow_id;
+          if (workflowId && timeSavedMap.has(workflowId)) {
+            const timeSavedPerExecution = timeSavedMap.get(workflowId);
+            totalTimeSaved += timeSavedPerExecution || 0;
+          }
+        }
+      });
       
       const avgExecutionTime = workflowData?.length 
         ? workflowData.reduce((sum, w) => sum + (w.total_execution_time_ms || 0), 0) / workflowData.length 
         : 0;
 
+      const totalTimeExecution = workflowData.reduce((sum, w) => sum + (w.total_execution_time_ms || 0), 0);
       const totalWorkflowCost = workflowData?.reduce((sum, w) => sum + (Number(w.estimated_cost_usd) || 0), 0) || 0;
       const totalWorkflowTokens = workflowData?.reduce((sum, w) => sum + (w.total_tokens || 0), 0) || 0;
 
@@ -229,15 +245,16 @@ const Dashboard = () => {
         .slice(-14);
 
       setMetrics({
-        queue: queueMetrics,
         workflows: {
           total: workflowData?.length || 0,
           successful: successfulWorkflows,
           failed: failedWorkflows,
           running: runningWorkflows,
           avgExecutionTime: Math.round(avgExecutionTime),
+          totalTimeExecution: totalTimeExecution,
           totalCost: totalWorkflowCost,
           totalTokens: totalWorkflowTokens,
+          totalTimeSaved: totalTimeSaved, 
         },
         nodes: {
           total: nodeData?.length || 0,
@@ -328,8 +345,8 @@ const Dashboard = () => {
           {/* Workflow Execution Metrics Skeleton */}
           <div>
             <Skeleton className="h-6 w-56 mb-3" />
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {[...Array(4)].map((_, i) => (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
                 <div key={i} className="bg-white rounded-lg shadow-lg border-l-4 border-gray-300 p-6">
                   <div className="flex items-center justify-between mb-4">
                     <Skeleton className="h-4 w-28" />
@@ -359,23 +376,6 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Queue Status Skeleton */}
-          <div>
-            <Skeleton className="h-6 w-52 mb-3" />
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="bg-white rounded-lg shadow-lg border-l-4 border-gray-300 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-5 w-5 rounded-full" />
-                  </div>
-                  <Skeleton className="h-8 w-16 mb-1" />
-                  <Skeleton className="h-3 w-20" />
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Charts Skeleton */}
           <div className="grid gap-6 md:grid-cols-2">
             {[...Array(2)].map((_, i) => (
@@ -397,13 +397,6 @@ const Dashboard = () => {
   }
 
   const COLORS = ['#22c55e', '#ef4444', '#eab308', '#3b82f6'];
-
-  const queuePieData = [
-    { name: 'Done', value: metrics.queue.done },
-    { name: 'Failed', value: metrics.queue.failed },
-    { name: 'Pending', value: metrics.queue.pending },
-    { name: 'Processing', value: metrics.queue.processing },
-  ];
 
   return (
    <div className="space-y-6 pl-4 bg-gray-50 min-h-screen">
@@ -458,7 +451,7 @@ const Dashboard = () => {
         {/* Workflow Execution Metrics */}
         <div>
           <h3 className="text-lg font-semibold mb-3 text-gray-900">Metrik Workflow Execution</h3>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <AnimatedMetricCard
               title="Total Eksekusi"
               value={metrics.workflows.total}
@@ -497,6 +490,24 @@ const Dashboard = () => {
               borderColor="border-green-800"
               subtitle={`${metrics.workflows.totalTokens.toLocaleString()} tokens`}
               decimals={4}
+            />
+            <AnimatedMetricCard
+              title="Total Time Saved"
+              value={metrics.workflows.totalTimeSaved.toFixed(2)}
+              suffix=" min"
+              icon={<Clock className="h-5 w-5 text-purple-600" />}
+              borderColor="border-purple-600"
+              subtitle="Waktu yang dihemat"
+              decimals={2}
+            />
+            <AnimatedMetricCard
+              title="Total Waktu Eksekusi"
+              value={(metrics.workflows.totalTimeExecution / 1000/60).toFixed(2)}
+              suffix=" min"
+              icon={<Timer className="h-5 w-5 text-orange-600" />}
+              borderColor="border-orange-600"
+              subtitle="Total waktu eksekusi"
+              decimals={2}
             />
           </div>
         </div>
@@ -537,87 +548,32 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Queue Status Cards */}
-        <div>
-          <h3 className="text-lg font-semibold mb-3 text-gray-900">Status Antrian Proses</h3>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-            <AnimatedMetricCard
-              title="Total Antrian"
-              value={metrics.queue.total}
-              icon={<ListOrdered className="h-5 w-5 text-blue-500" />}
-              borderColor="border-blue-500"
-              subtitle="Total item"
-            />
-            <AnimatedMetricCard
-              title="Done"
-              value={metrics.queue.done}
-              icon={<CheckCircle className="h-5 w-5 text-green-600" />}
-              borderColor="border-green-600"
-              subtitle="Selesai"
-            />
-            <AnimatedMetricCard
-              title="Pending"
-              value={metrics.queue.pending}
-              icon={<Clock className="h-5 w-5 text-yellow-500" />}
-              borderColor="border-yellow-500"
-              subtitle="Menunggu proses"
-            />
-            <AnimatedMetricCard
-              title="Processing"
-              value={metrics.queue.processing}
-              icon={<LoaderCircle className="h-5 w-5 text-blue-800" />}
-              borderColor="border-blue-800"
-              subtitle="Sedang diproses"
-            />
-            <AnimatedMetricCard
-              title="Failed"
-              value={metrics.queue.failed}
-              icon={<AlertTriangle className="h-5 w-5 text-red-500" />}
-              borderColor="border-red-500"
-              subtitle="Gagal"
-            />
-          </div>
-        </div>
-
         {/* Charts */}
         <div className="grid gap-6 md:grid-cols-2">
           {/* Daily Executions Trend */}
           <ChartCard title="Tren Eksekusi Harian">
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={metrics.trends.dailyExecutions}>
+              <BarChart data={metrics.trends.dailyExecutions}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="count" 
-                  stroke="#3b82f6" 
-                  name="Total" 
-                  strokeWidth={2} 
-                  dot={{ r: 4 }} 
-                  activeDot={{ r: 8 }} 
-                />
-                <Line 
-                  type="monotone" 
+                <Bar 
                   dataKey="success" 
-                  stroke="#22c55e" 
+                  stackId="a"
+                  fill="#22c55e" 
                   name="Berhasil" 
-                  strokeWidth={2} 
-                  dot={{ r: 4 }} 
-                  activeDot={{ r: 8 }} 
+                  radius={[0, 0, 0, 0]}
                 />
-                <Line 
-                  type="monotone" 
+                <Bar 
                   dataKey="failed" 
-                  stroke="#ef4444" 
+                  stackId="a"
+                  fill="#ef4444" 
                   name="Gagal" 
-                  strokeWidth={2} 
-                  dot={{ r: 4 }} 
-                  activeDot={{ r: 8 }} 
+                  radius={[8, 8, 0, 0]}
                 />
-              </LineChart>
+              </BarChart>
             </ResponsiveContainer>
           </ChartCard>
 
@@ -631,7 +587,7 @@ const Dashboard = () => {
                 <Tooltip />
                 <Bar 
                   dataKey="count" 
-                  fill="#3b82f6" 
+                  fill="#3b82f6"
                   name="Jumlah Eksekusi" 
                   radius={[0, 8, 8, 0]}
                   animationBegin={0}

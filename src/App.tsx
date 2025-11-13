@@ -11,6 +11,7 @@ import { DashboardLayout } from "./components/DashboardLayout";
 import NotFound from "./pages/NotFound";
 import WorkflowExecution from "./pages/WorkflowExecution";
 import Profile from "./pages/Profile";
+import WorkflowInformation from "./pages/WorkflowInformation"
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,14 @@ const App = () => (
             element={
               <DashboardLayout>
                 <Dashboard />
+              </DashboardLayout>
+            }
+          />
+          <Route
+            path="/workflow-information"
+            element={
+              <DashboardLayout>
+                <WorkflowInformation />
               </DashboardLayout>
             }
           />

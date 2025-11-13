@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,9 +38,14 @@ function DashboardHeader() {
 
   return (
     <header className="sticky top-0 z-50 h-16 border-b border-border/40 bg-white backdrop-blur-sm flex items-center px-6 gap-4 transition-all duration-300">
+      {/* Mobile Sidebar Trigger - Hanya tampil di mobile */}
+      <div className="md:hidden">
+        <SidebarTrigger />
+      </div>
+
       {/* Title Section dengan animasi */}
       <div className="flex items-center gap-3 flex-1">
-        <div className="relative">
+        <div className="relative hidden md:block">
           <div className="absolute inset-0 bg-primary/10 rounded-lg blur-md" />
           <ChartPie className="w-6 h-6 text-primary relative z-10 transition-transform duration-300 hover:scale-110 hover:rotate-12" />
         </div>
@@ -48,7 +53,7 @@ function DashboardHeader() {
           <h1 className="text-xl font-semibold text-foreground tracking-tight">
             Workflow Monitoring
           </h1>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground hidden sm:block">
             Real-time analytics & insights
           </p>
         </div>

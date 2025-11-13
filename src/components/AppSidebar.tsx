@@ -7,6 +7,7 @@ import {
   LogOut,
   ChevronsLeft,
   ChevronsRight,
+  Network,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -28,6 +29,11 @@ const menuItems = [
     title: "Dashboard",
     url: "/dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Workflow Information",
+    url: "/workflow-information",
+    icon: Network,
   },
   {
     title: "Workflow Executions",
@@ -89,12 +95,11 @@ export function AppSidebar() {
           variant="ghost"
           size="icon"
           onClick={toggleSidebar}
-          className={`
+          className="
             group relative overflow-hidden
             hover:bg-primary/10 hover:text-primary
             transition-all duration-300 ease-in-out
-            ${collapsed ? "" : ""}
-          `}
+          "
         >
           <div className="absolute inset-0 bg-primary/5 scale-0 group-hover:scale-100 transition-transform duration-300 rounded-md" />
           {collapsed ? (
@@ -126,14 +131,14 @@ export function AppSidebar() {
                       className={`
                         group relative overflow-hidden
                         transition-all duration-300 ease-in-out
-                        ${collapsed ? 'justify-center' : 'hover:translate-x-1'}
+                        ${collapsed ? 'justify-center' : 'justify-start hover:translate-x-1'}
                         hover:bg-primary/10
                         ${isActive ? 'bg-primary/15 text-primary font-medium shadow-sm' : 'bg-white'}
                       `}
                     >
                       <NavLink 
                         to={item.url} 
-                        className={`flex items-center ${collapsed ? 'justify-center w-full h-full' : 'w-full'}`}
+                        className={`flex items-center w-full ${collapsed ? 'justify-center' : 'justify-start'}`}
                       >
                         {/* Active indicator */}
                         {isActive && !collapsed && (
@@ -183,10 +188,10 @@ export function AppSidebar() {
                 transition-all duration-300 ease-in-out
                 hover:bg-primary/10
                 ${location.pathname.startsWith("/profile") ? 'bg-primary/15 text-primary' : ''}
-                ${collapsed ? 'justify-center' : 'hover:translate-x-1'}
+                ${collapsed ? 'justify-center' : 'justify-start hover:translate-x-1'}
               `}
             >
-              <NavLink to="/profile" className={`flex items-center ${collapsed ? 'justify-center w-full h-full' : ''}`}>
+              <NavLink to="/profile" className={`flex items-center w-full ${collapsed ? 'justify-center' : 'justify-start'}`}>
                 <Settings 
                   className={`
                     !h-5 !w-5 transition-all duration-300
@@ -211,10 +216,10 @@ export function AppSidebar() {
                 group relative overflow-hidden
                 transition-all duration-300 ease-in-out
                 hover:bg-red-500/10
-                ${collapsed ? 'justify-center' : 'hover:translate-x-1'}
+                ${collapsed ? 'justify-center' : 'justify-start hover:translate-x-1'}
               `}
             >
-              <div className={`flex items-center ${collapsed ? 'justify-center w-full' : ''}`}>
+              <div className={`flex items-center w-full ${collapsed ? 'justify-center' : 'justify-start'}`}>
                 <LogOut 
                   className={`
                     !h-5 !w-5 text-red-500 transition-all duration-300
