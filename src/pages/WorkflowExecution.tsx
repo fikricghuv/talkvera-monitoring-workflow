@@ -663,7 +663,7 @@ const WorkflowExecution = () => {
         <AnimatedMetricCard
           title="Total Estimasi Biaya (USD)"
           value={kpiData.totalCost}
-          suffix=" $"
+          prefix="$ "
           icon={<DollarSign className="h-5 w-5 text-green-600" />}
           borderColor="border-green-600"
           subtitle="Estimasi biaya AI"
