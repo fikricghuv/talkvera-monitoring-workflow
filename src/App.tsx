@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import WorkflowExecution from "./pages/WorkflowExecution";
 import Profile from "./pages/Profile";
 import WorkflowInformation from "./pages/WorkflowInformation"
+import OverviewKlinikGriyaSehat from "./pages/klinik-griya-sehat/OverviewKlinikGriyaSehat"
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,14 @@ const App = () => (
             element={
               <DashboardLayout>
                 <Profile />
+              </DashboardLayout>
+            }
+          />
+          <Route
+            path="/projects/klinik-sehat-sentosa/overview"
+            element={
+              <DashboardLayout>
+                <OverviewKlinikGriyaSehat />
               </DashboardLayout>
             }
           />
