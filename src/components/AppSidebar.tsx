@@ -75,12 +75,12 @@ const menuItems = [
         ],
       },
       {
-        title: "Talkvera Data Agent",
-        url: "/projects/data-agent-enterprise", // URL dasar untuk sub-proyek
+        title: "Analisis Data Agent",
+        url: "/projects/talkvera-data-agent", // URL dasar untuk sub-proyek
         children: [
           {
             title: "Overview",
-            url: "/projects/data-agent-enterprise/overview",
+            url: "/projects/talkvera-data-agent/overview",
           },
           {
             title: "Query Monitoring",

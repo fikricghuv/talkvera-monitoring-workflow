@@ -3,13 +3,13 @@ import { toast } from "sonner";
 import { NodeExecution } from "@/types/nodeExecution";
 import { useNodeExecutions } from "@/hooks/useNodeExecutions";
 import { useExportReport } from "@/hooks/useExportReport";
-import { ExecutionSkeleton } from "@/components/ExecutionSkeleton";
-import { ExecutionHeader } from "@/components/ExecutionHeader";
-import { ExecutionMetrics } from "@/components/ExecutionMetrics";
-import { ExecutionFilters } from "@/components/ExecutionFilters";
-import { ExecutionTable } from "@/components/ExecutionTable";
+import { ExecutionSkeleton } from "@/components/executionDetail/ExecutionSkeleton";
+import { ExecutionHeader } from "@/components/executionDetail/ExecutionHeader";
+import { ExecutionMetrics } from "@/components/executionDetail/ExecutionMetrics";
+import { ExecutionFilters } from "@/components/executionDetail/ExecutionFilters";
+import { ExecutionTable } from "@/components/executionDetail/ExecutionTable";
 import { PaginationControls } from "@/components/PaginationControls";
-import { ExecutionDetailModal } from "@/components/ExecutionDetailModal";
+import { ExecutionDetailModal } from "@/components/executionDetail/ExecutionDetailModal";
 
 const DetailExecution = () => {
   // Filter States

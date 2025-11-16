@@ -10,11 +10,11 @@ import { Label } from "@/components/ui/label";
 
 import { useChatbotOverviewData } from "../../hooks/useChatbotOverviewData";
 
-import { ChatbotOverviewSkeleton } from "../../components/overview/ChatbotOverviewSkeleton";
-import { ChatbotOverviewHeader } from "../../components/overview/ChatbotOverviewHeader";
-import { ChatbotOverviewMetrics } from "../../components/overview/ChatbotOverviewMetrics";
-import { RecentActivityTable } from "../../components/overview/RecentActivityTable";
-import { SessionStatusChart } from "../../components/overview/SessionStatusChart";
+import { ChatbotOverviewSkeleton } from "../../components/klinikGriyaSehat/overview/ChatbotOverviewSkeleton";
+import { ChatbotOverviewHeader } from "../../components/klinikGriyaSehat/overview/ChatbotOverviewHeader";
+import { ChatbotOverviewMetrics } from "../../components/klinikGriyaSehat/overview/ChatbotOverviewMetrics";
+import { RecentActivityTable } from "../../components/klinikGriyaSehat/overview/RecentActivityTable";
+import { SessionStatusChart } from "../../components/klinikGriyaSehat/overview/SessionStatusChart";
 
 /**
  * Main page component untuk Chatbot Overview (Dashboard)

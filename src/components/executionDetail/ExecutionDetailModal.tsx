@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { NodeExecution } from "@/types/nodeExecution";
 import { formatExecutionTime } from "@/utils/nodeExecutionUtils";
-import { StatusBadge } from "./StatusBadge";
+import { StatusBadge } from "../StatusBadge";
 
 interface ExecutionDetailModalProps {
   isOpen: boolean;

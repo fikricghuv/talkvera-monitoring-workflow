@@ -3,7 +3,7 @@
 import React from "react";
 import { Workflow, CheckCircle2, Clock } from "lucide-react";
 import { AnimatedMetricCard } from "@/components/AnimatedMetricCard"; // ⚠️ Import dari shared component
-import { KPIData } from "../types/workflowInformation";
+import { KPIData } from "../../types/workflowInformation";
 
 interface WorkflowInformationMetricsProps {
   kpiData: KPIData;

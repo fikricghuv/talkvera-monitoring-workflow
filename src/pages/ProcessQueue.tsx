@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { QueueItem } from "@/types/processQueue";
 import { useProcessQueue } from "@/hooks/useProcessQueue";
-import { QueueSkeleton } from "@/components/QueueSkeleton";
-import { QueueHeader } from "@/components/QueueHeader";
-import { QueueMetrics } from "@/components/QueueMetrics";
-import { QueueFilters } from "@/components/QueueFilters";
-import { QueueTable } from "@/components/QueueTable";
+import { QueueSkeleton } from "@/components/queueExecution/QueueSkeleton";
+import { QueueHeader } from "@/components/queueExecution/QueueHeader";
+import { QueueMetrics } from "@/components/queueExecution/QueueMetrics";
+import { QueueFilters } from "@/components/queueExecution/QueueFilters";
+import { QueueTable } from "@/components/queueExecution/QueueTable";
 import { PaginationControls } from "@/components/PaginationControls";
-import { QueueDetailModal } from "@/components/QueueDetailModal";
+import { QueueDetailModal } from "@/components/queueExecution/QueueDetailModal";
 
 const ProcessQueue = () => {
   // Filter States

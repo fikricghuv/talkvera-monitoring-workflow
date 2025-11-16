@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Appointment } from "@/types/appointments";
 import { useAppointments } from "@/hooks/useAppointments";
-import { AppointmentSkeleton } from "@/components/appointment/AppointmentSkeleton";
-import { AppointmentHeader } from "@/components/appointment/AppointmentHeader";
-import { AppointmentMetrics } from "@/components/appointment/AppointmentMetrics";
-import { AppointmentFilters } from "@/components/appointment/AppointmentFilters";
-import { AppointmentTable } from "@/components/appointment/AppointmentTable";
+import { AppointmentSkeleton } from "@/components/klinikGriyaSehat/appointment/AppointmentSkeleton";
+import { AppointmentHeader } from "@/components/klinikGriyaSehat/appointment/AppointmentHeader";
+import { AppointmentMetrics } from "@/components/klinikGriyaSehat/appointment/AppointmentMetrics";
+import { AppointmentFilters } from "@/components/klinikGriyaSehat/appointment/AppointmentFilters";
+import { AppointmentTable } from "@/components/klinikGriyaSehat/appointment/AppointmentTable";
 import { PaginationControls } from "@/components/PaginationControls";
-import { AppointmentDetailModal } from "@/components/appointment/AppointmentDetailModal";
+import { AppointmentDetailModal } from "@/components/klinikGriyaSehat/appointment/AppointmentDetailModal";
 
 const AppointmentManagement = () => {
   // Filter States

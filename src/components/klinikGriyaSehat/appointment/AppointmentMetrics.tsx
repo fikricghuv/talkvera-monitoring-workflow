@@ -1,5 +1,5 @@
 import { Calendar, CalendarCheck, CalendarX, CheckCircle2, Clock } from "lucide-react";
-import { AnimatedMetricCard } from "../AnimatedMetricCard";
+import { AnimatedMetricCard } from "../../AnimatedMetricCard";
 import { AppointmentMetrics as MetricsType } from "@/types/appointments";
 
 interface AppointmentMetricsProps {

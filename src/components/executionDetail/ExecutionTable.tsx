@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { NodeExecution } from "@/types/nodeExecution";
 import { formatExecutionTime } from "@/utils/nodeExecutionUtils";
-import { StatusBadge } from "./StatusBadge";
+import { StatusBadge } from "../StatusBadge";
 
 interface ExecutionTableProps {
   nodeExecutions: NodeExecution[];

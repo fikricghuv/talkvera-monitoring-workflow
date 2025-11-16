@@ -3,7 +3,7 @@
 import React from "react";
 import { CirclePlay, AlertTriangle, DollarSign, Cpu } from "lucide-react";
 import { AnimatedMetricCard } from "@/components/AnimatedMetricCard";
-import { KPIData } from "../types/workflowExecution";
+import { KPIData } from "../../types/workflowExecution";
 
 interface WorkflowExecutionMetricsProps {
   kpiData: KPIData;

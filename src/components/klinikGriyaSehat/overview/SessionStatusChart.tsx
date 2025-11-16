@@ -1,8 +1,8 @@
 // components/overview/SessionStatusChart.tsx
 
 import React from "react";
-import { SessionStatusDistribution } from "../../types/chatbotOverview";
-import { SESSION_STATUS_CONFIG, CHART_COLORS } from "../../constants/chatbotOverview";
+import { SessionStatusDistribution } from "../../../types/chatbotOverview";
+import { SESSION_STATUS_CONFIG, CHART_COLORS } from "../../../constants/chatbotOverview";
 import { Loader2 } from "lucide-react";
 
 interface SessionStatusChartProps {

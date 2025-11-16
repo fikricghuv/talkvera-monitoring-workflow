@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Badge } from "@/components/ui/badge";
-import { SESSION_STATUS_CONFIG } from "../../constants/chatbotOverview";
+import { SESSION_STATUS_CONFIG } from "../../../constants/chatbotOverview";
 
 interface SessionStatusBadgeProps {
   status: string;

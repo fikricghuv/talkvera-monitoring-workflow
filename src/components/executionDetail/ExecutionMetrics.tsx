@@ -1,5 +1,5 @@
 import { Network, CircleCheckBig, Timer, Cpu } from "lucide-react";
-import { AnimatedMetricCard } from "./AnimatedMetricCard";
+import { AnimatedMetricCard } from "../AnimatedMetricCard";
 import { MetricsData } from "@/types/nodeExecution";
 import { formatExecutionTime } from "@/utils/nodeExecutionUtils";
 

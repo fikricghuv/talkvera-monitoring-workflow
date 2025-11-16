@@ -30,34 +30,34 @@ export class ChatbotOverviewService {
       ] = await Promise.all([
         // Total Patients
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_PATIENTS)
+          .from(OVERVIEW_CONSTANTS.TABLE_PATIENTS as any) // <-- DIUBAH
           .select("id", { count: 'exact', head: true }),
         
         // Active Sessions (IN_PROGRESS)
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS)
+          .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any) // <-- DIUBAH
           .select("id", { count: 'exact', head: true })
           .eq("status", "IN_PROGRESS"),
         
         // Completed Sessions
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS)
+          .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any) // <-- DIUBAH
           .select("id", { count: 'exact', head: true })
           .eq("status", "COMPLETED"),
         
         // Total Messages
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_MESSAGES)
+          .from(OVERVIEW_CONSTANTS.TABLE_MESSAGES as any) // <-- DIUBAH
           .select("id", { count: 'exact', head: true }),
         
         // Total Appointments
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_APPOINTMENTS)
+          .from(OVERVIEW_CONSTANTS.TABLE_APPOINTMENTS as any) // <-- DIUBAH
           .select("id", { count: 'exact', head: true }),
         
         // Pending Appointments (BOOKED status)
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_APPOINTMENTS)
+          .from(OVERVIEW_CONSTANTS.TABLE_APPOINTMENTS as any) // <-- DIUBAH
           .select("id", { count: 'exact', head: true })
           .eq("status", "BOOKED"),
       ]);
@@ -82,7 +82,7 @@ export class ChatbotOverviewService {
   static async fetchRecentSessions(): Promise<RecentSession[]> {
     try {
       const { data, error } = await supabase
-        .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS)
+        .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any) // <-- DIUBAH
         .select(`
           id,
           patient_id,
@@ -101,7 +101,8 @@ export class ChatbotOverviewService {
       if (error) throw error;
 
       // Process data
-      const rawData = (data as any) || [];
+      // Kode Anda di sini (data as any) sudah benar untuk workaround
+      const rawData = (data as any) || []; 
       
       const sessions: RecentSession[] = rawData.map((session: any) => ({
         id: session.id,
@@ -126,7 +127,7 @@ export class ChatbotOverviewService {
   static async fetchStatusDistribution(): Promise<SessionStatusDistribution[]> {
     try {
       const { data, error } = await supabase
-        .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS)
+        .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any) // <-- DIUBAH
         .select("status");
 
       if (error) throw error;

@@ -14,13 +14,13 @@ import { WorkflowInfo, FilterState, PaginationState } from "../types/workflowInf
 import { WORKFLOW_CONSTANTS } from "../constants/workflowInformation";
 import { generateWorkflowCSV, downloadCSV } from "../utils/workflowInformationUtils";
 
-import { WorkflowInformationSkeleton } from "../components/WorkflowInformationSkeleton";
-import { WorkflowInformationHeader } from "../components/WorkflowInformationHeader";
-import { WorkflowInformationMetrics } from "../components/WorkflowInformationMetrics";
-import { WorkflowInformationFilters } from "../components/WorkflowInformationFilters";
-import { WorkflowInformationTable } from "../components/WorkflowInformationTable";
+import { WorkflowInformationSkeleton } from "../components/workflowInformation/WorkflowInformationSkeleton";
+import { WorkflowInformationHeader } from "../components/workflowInformation/WorkflowInformationHeader";
+import { WorkflowInformationMetrics } from "../components/workflowInformation/WorkflowInformationMetrics";
+import { WorkflowInformationFilters } from "../components/workflowInformation/WorkflowInformationFilters";
+import { WorkflowInformationTable } from "../components/workflowInformation/WorkflowInformationTable";
 import { PaginationControls } from "../components/PaginationControls";
-import { WorkflowInformationDetailModal } from "../components/WorkflowInformationDetailModal";
+import { WorkflowInformationDetailModal } from "../components/workflowInformation/WorkflowInformationDetailModal";
 
 /**
  * Main page component untuk Workflow Information

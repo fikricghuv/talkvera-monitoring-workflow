@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Badge } from "@/components/ui/badge";
-import { STATUS_CONFIG } from "../constants/workflowExecution";
+import { STATUS_CONFIG } from "../../constants/workflowExecution";
 
 interface ExecutionStatusBadgeProps {
   status: string | null;

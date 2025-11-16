@@ -1,5 +1,5 @@
 import { Clock, AlertTriangle, CheckCircle } from "lucide-react";
-import { AnimatedMetricCard } from "./AnimatedMetricCard";
+import { AnimatedMetricCard } from "../AnimatedMetricCard";
 import { QueueKPI } from "@/types/processQueue";
 
 interface QueueMetricsProps {

@@ -11,8 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SessionStatusBadge } from "./SessionStatusBadge";
-import { RecentSession } from "../../types/chatbotOverview";
-import { formatDateTime, getRelativeTime } from "../../utils/chatbotOverviewUtils";
+import { RecentSession } from "../../../types/chatbotOverview";
+import { formatDateTime, getRelativeTime } from "../../../utils/chatbotOverviewUtils";
 
 interface RecentActivityTableProps {
   sessions: RecentSession[];

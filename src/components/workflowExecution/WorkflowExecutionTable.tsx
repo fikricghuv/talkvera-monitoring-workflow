@@ -10,9 +10,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ExecutionStatusBadge } from "./ExecutionStatusBadge";
-import { WorkflowExecution } from "../types/workflowExecution";
-import { formatDateTime, formatExecutionTime } from "../utils/workflowExecutionUtils";
+import { ExecutionStatusBadge } from "../executionDetail/ExecutionStatusBadge";
+import { WorkflowExecution } from "../../types/workflowExecution";
+import { formatDateTime, formatExecutionTime } from "../../utils/workflowExecutionUtils";
 
 interface WorkflowExecutionTableProps {
   executions: WorkflowExecution[];

@@ -3,7 +3,7 @@
 import React from "react";
 import { Users, MessageSquare, CheckCircle2, Calendar, Clock, AlertCircle } from "lucide-react";
 import { AnimatedMetricCard } from "@/components/AnimatedMetricCard";
-import { KPIData } from "../../types/chatbotOverview";
+import { KPIData } from "../../../types/chatbotOverview";
 
 interface ChatbotOverviewMetricsProps {
   kpiData: KPIData;

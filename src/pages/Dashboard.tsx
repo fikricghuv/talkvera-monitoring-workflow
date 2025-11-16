@@ -2,8 +2,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { getInitialCustomDates } from "@/utils/dateUtils";
-import { DashboardSkeleton } from "@/components/DashboardSkeleton";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { MetricsSection } from "@/components/MetricsSection";
 import { ChartsSection } from "@/components/ChartsSection";
 

@@ -19,11 +19,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ExecutionStatusBadge } from "./ExecutionStatusBadge";
-import { WorkflowExecution, NodeExecution } from "../types/workflowExecution";
-import { formatDateTime, formatExecutionTime } from "../utils/workflowExecutionUtils";
-import { EXECUTION_CONSTANTS } from "../constants/workflowExecution";
-import { WorkflowExecutionService } from "../services/workflowExecutionService";
+import { ExecutionStatusBadge } from "../executionDetail/ExecutionStatusBadge";
+import { WorkflowExecution, NodeExecution } from "../../types/workflowExecution";
+import { formatDateTime, formatExecutionTime } from "../../utils/workflowExecutionUtils";
+import { EXECUTION_CONSTANTS } from "../../constants/workflowExecution";
+import { WorkflowExecutionService } from "../../services/workflowExecutionService";
 
 interface WorkflowExecutionDetailModalProps {
   execution: WorkflowExecution | null;

@@ -7,13 +7,14 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import DetailExecution from "./pages/DetailExecution";
 import ProcessQueue from "./pages/ProcessQueue";
-import { DashboardLayout } from "./components/DashboardLayout";
+import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 import NotFound from "./pages/NotFound";
 import WorkflowExecution from "./pages/WorkflowExecution";
 import Profile from "./pages/Profile";
 import WorkflowInformation from "./pages/WorkflowInformation"
 import ChatbotOverview  from "./pages/klinik-griya-sehat/ChatbotOverview"
 import AppointmentManagement from "./pages/klinik-griya-sehat/AppointmentManagement"
+import AgentOverview from "./pages/talkvera-data-agent/DataAgentOverview"
 
 const queryClient = new QueryClient();
 
@@ -87,6 +88,15 @@ const App = () => (
             element={
               <DashboardLayout>
                 <AppointmentManagement />
+              </DashboardLayout>
+            }
+          />
+
+          <Route
+            path="/projects/talkvera-data-agent/overview"
+            element={
+              <DashboardLayout>
+                <AgentOverview />
               </DashboardLayout>
             }
           />

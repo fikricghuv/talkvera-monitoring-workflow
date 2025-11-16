@@ -14,13 +14,13 @@ import { WorkflowExecution, FilterState, PaginationState } from "../types/workfl
 import { EXECUTION_CONSTANTS } from "../constants/workflowExecution";
 import { generateExecutionCSV, downloadCSV } from "../utils/workflowExecutionUtils";
 
-import { WorkflowExecutionSkeleton } from "../components/WorkflowExecutionSkeleton";
-import { WorkflowExecutionHeader } from "../components/WorkflowExecutionHeader";
-import { WorkflowExecutionMetrics } from "../components/WorkflowExecutionMetrics";
-import { WorkflowExecutionFilters } from "../components/WorkflowExecutionFilters";
-import { WorkflowExecutionTable } from "../components/WorkflowExecutionTable";
+import { WorkflowExecutionSkeleton } from "../components/workflowExecution/WorkflowExecutionSkeleton";
+import { WorkflowExecutionHeader } from "../components/workflowExecution/WorkflowExecutionHeader";
+import { WorkflowExecutionMetrics } from "../components/workflowExecution/WorkflowExecutionMetrics";
+import { WorkflowExecutionFilters } from "../components/workflowExecution/WorkflowExecutionFilters";
+import { WorkflowExecutionTable } from "../components/workflowExecution/WorkflowExecutionTable";
 import { PaginationControls } from "@/components/PaginationControls";
-import { WorkflowExecutionDetailModal } from "../components/WorkflowExecutionDetailModal";
+import { WorkflowExecutionDetailModal } from "../components/workflowExecution/WorkflowExecutionDetailModal";
 
 /**
  * Main page component untuk Workflow Execution
