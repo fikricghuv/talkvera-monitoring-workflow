@@ -12,7 +12,8 @@ import NotFound from "./pages/NotFound";
 import WorkflowExecution from "./pages/WorkflowExecution";
 import Profile from "./pages/Profile";
 import WorkflowInformation from "./pages/WorkflowInformation"
-import OverviewKlinikGriyaSehat from "./pages/klinik-griya-sehat/OverviewKlinikGriyaSehat"
+import ChatbotOverview  from "./pages/klinik-griya-sehat/ChatbotOverview"
+import AppointmentManagement from "./pages/klinik-griya-sehat/AppointmentManagement"
 
 const queryClient = new QueryClient();
 
@@ -77,7 +78,15 @@ const App = () => (
             path="/projects/klinik-sehat-sentosa/overview"
             element={
               <DashboardLayout>
-                <OverviewKlinikGriyaSehat />
+                <ChatbotOverview />
+              </DashboardLayout>
+            }
+          />
+          <Route
+            path="/projects/klinik-sehat-sentosa/appointment"
+            element={
+              <DashboardLayout>
+                <AppointmentManagement />
               </DashboardLayout>
             }
           />

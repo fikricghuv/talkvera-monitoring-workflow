@@ -69,12 +69,8 @@ const menuItems = [
             url: "/projects/klinik-sehat-sentosa/overview",
           },
           {
-            title: "Chatbot Monitoring",
-            url: "/projects/klinik-sehat-sentosa/chatbot-monitoring",
-          },
-          {
-            title: "Appointment Monitoring",
-            url: "/projects/klinik-sehat-sentosa/appointment-monitoring",
+            title: "Appointment",
+            url: "/projects/klinik-sehat-sentosa/appointment",
           },
         ],
       },
