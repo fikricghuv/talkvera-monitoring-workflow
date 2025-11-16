@@ -36,7 +36,7 @@ export const DashboardHeader = ({
         
         <button 
           onClick={onRefresh}
-          className="px-4 py-2 border border-gray-300 bg-white rounded-lg hover:bg-accent hover:text-white transition-colors flex items-center gap-2 shadow-lg"
+          className="px-4 py-2 border border-gray-300 bg-white rounded-lg hover:bg-blue-500 hover:text-white transition-colors flex items-center gap-2 shadow-lg"
         >
           <RefreshCw className="h-4 w-4" />
           Refresh
