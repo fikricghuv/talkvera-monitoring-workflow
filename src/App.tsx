@@ -76,7 +76,7 @@ const App = () => (
             }
           />
           <Route
-            path="/projects/klinik-sehat-sentosa/overview"
+            path="/projects/klinik-griya-sehat/overview"
             element={
               <DashboardLayout>
                 <ChatbotOverview />
@@ -84,7 +84,7 @@ const App = () => (
             }
           />
           <Route
-            path="/projects/klinik-sehat-sentosa/appointment"
+            path="/projects/klinik-griya-sehat/appointment"
             element={
               <DashboardLayout>
                 <AppointmentManagement />
