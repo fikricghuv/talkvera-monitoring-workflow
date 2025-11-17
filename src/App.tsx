@@ -15,6 +15,7 @@ import WorkflowInformation from "./pages/WorkflowInformation"
 import ChatbotOverview  from "./pages/klinik-griya-sehat/ChatbotOverview"
 import AppointmentManagement from "./pages/klinik-griya-sehat/AppointmentManagement"
 import AgentOverview from "./pages/talkvera-data-agent/DataAgentOverview"
+import AgentMonitoring from "./pages/talkvera-data-agent/AgentMonitoring"
 
 const queryClient = new QueryClient();
 
@@ -91,12 +92,19 @@ const App = () => (
               </DashboardLayout>
             }
           />
-
           <Route
             path="/projects/talkvera-data-agent/overview"
             element={
               <DashboardLayout>
                 <AgentOverview />
+              </DashboardLayout>
+            }
+          />
+          <Route
+            path="/projects/talkvera-data-agent/query-monitoring"
+            element={
+              <DashboardLayout>
+                <AgentMonitoring />
               </DashboardLayout>
             }
           />
