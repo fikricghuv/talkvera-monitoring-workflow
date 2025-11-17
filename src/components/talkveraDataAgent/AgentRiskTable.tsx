@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { AgentRiskDistribution } from '@/types/dataAgent';
+import type { AgentRiskDistribution } from '@/types/dataAgentOverview';
 import { RISK_TYPE_LABELS, SEVERITY_LABELS } from '@/constants/dataAgent';
 
 interface AgentRiskTableProps {

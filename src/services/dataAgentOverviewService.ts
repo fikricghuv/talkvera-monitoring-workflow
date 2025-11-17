@@ -1,7 +1,7 @@
 // src/services/agentService.ts
 
 import { supabase } from "@/integrations/supabase/client";
-import type { AgentQuery, AgentSQLLog, AgentRAGLog, AgentRiskLog, AgentOverviewFilters } from "@/types/dataAgent";
+import type { AgentQuery, AgentSQLLog, AgentRAGLog, AgentRiskLog, AgentOverviewFilters } from "@/types/dataAgentOverview";
 
 /**
  * Apply date filters to query

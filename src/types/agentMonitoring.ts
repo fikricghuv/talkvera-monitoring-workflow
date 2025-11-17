@@ -1,6 +1,6 @@
 // src/types/agentMonitoring.ts
 
-import type { AgentQuery, AgentSQLLog, AgentRAGLog, AgentRiskLog } from './dataAgent';
+import type { AgentQuery, AgentSQLLog, AgentRAGLog, AgentRiskLog } from './dataAgentOverview';
 
 export interface QueryWithDetails extends AgentQuery {
   sql_logs: AgentSQLLog[];

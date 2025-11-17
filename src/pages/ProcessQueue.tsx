@@ -7,7 +7,6 @@ import { QueueHeader } from "@/components/queueExecution/QueueHeader";
 import { QueueMetrics } from "@/components/queueExecution/QueueMetrics";
 import { QueueFilters } from "@/components/queueExecution/QueueFilters";
 import { QueueTable } from "@/components/queueExecution/QueueTable";
-import { PaginationControls } from "@/components/PaginationControls";
 import { QueueDetailModal } from "@/components/queueExecution/QueueDetailModal";
 
 const ProcessQueue = () => {
@@ -98,30 +97,23 @@ const ProcessQueue = () => {
           setEndDate={setEndDate}
         />
 
+        {/* QueueTable dengan Pagination di dalamnya */}
         <QueueTable
           queueItems={queueItems}
           isLoading={isLoading}
           totalCount={totalCount}
           currentPage={currentPage}
           itemsPerPage={itemsPerPage}
+          totalPages={totalPages}
           debouncedSearchTerm={debouncedSearchTerm}
           statusFilter={statusFilter}
           startDate={startDate}
           endDate={endDate}
           onRefresh={handleRefresh}
           onRowClick={handleRowClick}
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={handleItemsPerPageChange}
         />
-
-        {totalCount > 0 && (
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            itemsPerPage={itemsPerPage}
-            isLoading={isLoading}
-            onPageChange={handlePageChange}
-            onItemsPerPageChange={handleItemsPerPageChange}
-          />
-        )}
 
         <QueueDetailModal
           isOpen={isModalOpen}

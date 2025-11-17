@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   KPIData, 
   RecentSession, 
-  RawRecentSession,
   SessionStatusDistribution,
   OverviewData 
 } from "../types/chatbotOverview";
@@ -15,11 +14,45 @@ import { OVERVIEW_CONSTANTS } from "../constants/chatbotOverview";
  */
 export class ChatbotOverviewService {
   /**
-   * Fetch KPI data (metrics)
+   * Fetch all overview data dengan date filter
+   * @param startDate - Tanggal mulai filter (Date object)
+   * @param endDate - Tanggal akhir filter (Date object)
    */
-  static async fetchKPIData(): Promise<KPIData> {
+  static async fetchOverviewData(
+    startDate: Date,
+    endDate: Date
+  ): Promise<OverviewData> {
     try {
+      // Convert Date to ISO string for Supabase queries
+      const startDateStr = startDate.toISOString();
+      const endDateStr = endDate.toISOString();
+
       // Fetch all data in parallel
+      const [kpiData, recentSessions, statusDistribution] = await Promise.all([
+        this.fetchKPIData(startDateStr, endDateStr),
+        this.fetchRecentSessions(startDateStr, endDateStr),
+        this.fetchStatusDistribution(startDateStr, endDateStr),
+      ]);
+
+      return {
+        kpiData,
+        recentSessions,
+        statusDistribution,
+      };
+    } catch (error) {
+      console.error("Error in fetchOverviewData:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch KPI data (metrics) dengan date filter
+   * @param startDate - Tanggal mulai filter (ISO string)
+   * @param endDate - Tanggal akhir filter (ISO string)
+   */
+  private static async fetchKPIData(startDate: string, endDate: string): Promise<KPIData> {
+    try {
+      // Fetch all data in parallel dengan date filter
       const [
         patientsResult,
         activeSessionsResult,
@@ -28,38 +61,50 @@ export class ChatbotOverviewService {
         appointmentsResult,
         pendingAppointmentsResult,
       ] = await Promise.all([
-        // Total Patients
+        // Total Patients (count sessions dalam date range)
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_PATIENTS as any) // <-- DIUBAH
-          .select("id", { count: 'exact', head: true }),
+          .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any)
+          .select("patient_id", { count: 'exact', head: true })
+          .gte("start_time", startDate)
+          .lte("start_time", endDate),
         
         // Active Sessions (IN_PROGRESS)
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any) // <-- DIUBAH
+          .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any)
           .select("id", { count: 'exact', head: true })
-          .eq("status", "IN_PROGRESS"),
+          .eq("status", "IN_PROGRESS")
+          .gte("start_time", startDate)
+          .lte("start_time", endDate),
         
         // Completed Sessions
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any) // <-- DIUBAH
+          .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any)
           .select("id", { count: 'exact', head: true })
-          .eq("status", "COMPLETED"),
+          .eq("status", "COMPLETED")
+          .gte("start_time", startDate)
+          .lte("start_time", endDate),
         
         // Total Messages
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_MESSAGES as any) // <-- DIUBAH
-          .select("id", { count: 'exact', head: true }),
+          .from(OVERVIEW_CONSTANTS.TABLE_MESSAGES as any)
+          .select("id", { count: 'exact', head: true })
+          .gte("created_at", startDate)
+          .lte("created_at", endDate),
         
         // Total Appointments
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_APPOINTMENTS as any) // <-- DIUBAH
-          .select("id", { count: 'exact', head: true }),
+          .from(OVERVIEW_CONSTANTS.TABLE_APPOINTMENTS as any)
+          .select("id", { count: 'exact', head: true })
+          .gte("created_at", startDate)
+          .lte("created_at", endDate),
         
         // Pending Appointments (BOOKED status)
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_APPOINTMENTS as any) // <-- DIUBAH
+          .from(OVERVIEW_CONSTANTS.TABLE_APPOINTMENTS as any)
           .select("id", { count: 'exact', head: true })
-          .eq("status", "BOOKED"),
+          .eq("status", "BOOKED")
+          .gte("created_at", startDate)
+          .lte("created_at", endDate),
       ]);
 
       return {
@@ -77,12 +122,17 @@ export class ChatbotOverviewService {
   }
 
   /**
-   * Fetch recent sessions dengan join ke patients
+   * Fetch recent sessions dengan join ke patients dan date filter
+   * @param startDate - Tanggal mulai filter (ISO string)
+   * @param endDate - Tanggal akhir filter (ISO string)
    */
-  static async fetchRecentSessions(): Promise<RecentSession[]> {
+  private static async fetchRecentSessions(
+    startDate: string, 
+    endDate: string
+  ): Promise<RecentSession[]> {
     try {
       const { data, error } = await supabase
-        .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any) // <-- DIUBAH
+        .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any)
         .select(`
           id,
           patient_id,
@@ -95,13 +145,14 @@ export class ChatbotOverviewService {
             whatsapp_number
           )
         `)
+        .gte("start_time", startDate)
+        .lte("start_time", endDate)
         .order("start_time", { ascending: false })
         .limit(OVERVIEW_CONSTANTS.RECENT_SESSIONS_LIMIT);
 
       if (error) throw error;
 
       // Process data
-      // Kode Anda di sini (data as any) sudah benar untuk workaround
       const rawData = (data as any) || []; 
       
       const sessions: RecentSession[] = rawData.map((session: any) => ({
@@ -117,18 +168,25 @@ export class ChatbotOverviewService {
       return sessions;
     } catch (error) {
       console.error("Error fetching recent sessions:", error);
-      throw error;
+      return [];
     }
   }
 
   /**
-   * Fetch session status distribution untuk chart
+   * Fetch session status distribution untuk chart dengan date filter
+   * @param startDate - Tanggal mulai filter (ISO string)
+   * @param endDate - Tanggal akhir filter (ISO string)
    */
-  static async fetchStatusDistribution(): Promise<SessionStatusDistribution[]> {
+  private static async fetchStatusDistribution(
+    startDate: string,
+    endDate: string
+  ): Promise<SessionStatusDistribution[]> {
     try {
       const { data, error } = await supabase
-        .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any) // <-- DIUBAH
-        .select("status");
+        .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any)
+        .select("status")
+        .gte("start_time", startDate)
+        .lte("start_time", endDate);
 
       if (error) throw error;
 
@@ -155,24 +213,7 @@ export class ChatbotOverviewService {
       return distribution;
     } catch (error) {
       console.error("Error fetching status distribution:", error);
-      throw error;
+      return [];
     }
-  }
-
-  /**
-   * Fetch all overview data
-   */
-  static async fetchOverviewData(): Promise<OverviewData> {
-    const [kpiData, recentSessions, statusDistribution] = await Promise.all([
-      this.fetchKPIData(),
-      this.fetchRecentSessions(),
-      this.fetchStatusDistribution(),
-    ]);
-
-    return {
-      kpiData,
-      recentSessions,
-      statusDistribution,
-    };
   }
 }

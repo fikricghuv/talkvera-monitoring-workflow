@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { NodeExecution } from "@/types/nodeExecution";
 import { formatExecutionTime } from "@/utils/nodeExecutionUtils";
 import { StatusBadge } from "../StatusBadge";
+import { PaginationControls } from "@/components/PaginationControls";
 
 interface ExecutionTableProps {
   nodeExecutions: NodeExecution[];
@@ -13,9 +14,12 @@ interface ExecutionTableProps {
   totalCount: number;
   currentPage: number;
   itemsPerPage: number;
+  totalPages: number;
   onRefresh: () => void;
   onDownloadReport: () => void;
   onRowClick: (node: NodeExecution) => void;
+  onPageChange: (page: number) => void;
+  onItemsPerPageChange: (value: string) => void;
 }
 
 export const ExecutionTable = ({
@@ -24,24 +28,30 @@ export const ExecutionTable = ({
   totalCount,
   currentPage,
   itemsPerPage,
+  totalPages,
   onRefresh,
   onDownloadReport,
-  onRowClick
+  onRowClick,
+  onPageChange,
+  onItemsPerPageChange
 }: ExecutionTableProps) => {
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalCount);
+
   return (
     <Card className="shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Daftar Node Executions ({totalCount})</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Menampilkan {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalCount)} dari {totalCount} data
+            Menampilkan {totalCount > 0 ? startIndex + 1 : 0}-{endIndex} dari {totalCount} data
           </p>
         </div>
-        <div>
+        <div className="flex gap-2">
           <Button 
-            className="mr-2" 
             onClick={onRefresh} 
             variant="outline" 
+            size="sm"
             disabled={isLoading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
@@ -50,16 +60,17 @@ export const ExecutionTable = ({
           <Button 
             onClick={onDownloadReport}
             variant="default"
+            size="sm"
             className="bg-green-600 hover:bg-green-700"
             disabled={totalCount === 0}
           >
             <Download className="h-4 w-4 mr-2" />
-            Download Report
+            Download
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="rounded-lg border overflow-x-auto shadow-inner bg-white">
+        <div className="rounded-md border">
           <Table>
             <TableHeader className="sticky top-0 bg-muted/50 z-10 border-b">
               <TableRow>
@@ -127,6 +138,18 @@ export const ExecutionTable = ({
             </TableBody>
           </Table>
         </div>
+
+        {/* Pagination Controls - Sekarang di dalam CardContent */}
+        {totalCount > 0 && (
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            itemsPerPage={itemsPerPage}
+            isLoading={isLoading}
+            onPageChange={onPageChange}
+            onItemsPerPageChange={onItemsPerPageChange}
+          />
+        )}
       </CardContent>
     </Card>
   );

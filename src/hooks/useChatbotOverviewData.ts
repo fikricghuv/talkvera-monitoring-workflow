@@ -4,14 +4,14 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { ChatbotOverviewService } from "../services/chatbotOverviewService";
 import { OverviewData } from "../types/chatbotOverview";
-import { OVERVIEW_CONSTANTS } from "../constants/chatbotOverview";
 
 /**
  * Custom hook untuk fetch dan manage chatbot overview data
- * @param autoRefresh - Enable auto refresh setiap 30 detik
+ * @param startDate - Tanggal mulai filter
+ * @param endDate - Tanggal akhir filter
  * @returns Object dengan overview data, isLoading, dan refetch function
  */
-export const useChatbotOverviewData = (autoRefresh: boolean = false) => {
+export const useChatbotOverviewData = (startDate: Date, endDate: Date) => {
   const [data, setData] = useState<OverviewData>({
     kpiData: {
       totalPatients: 0,
@@ -27,17 +27,20 @@ export const useChatbotOverviewData = (autoRefresh: boolean = false) => {
   const [isLoading, setIsLoading] = useState(true);
 
   /**
-   * Fetch data dari service
+   * Fetch data dari service dengan date range
    */
   const fetchData = async (showToast: boolean = false) => {
     if (showToast) {
       setIsLoading(true);
     }
-    
+
     try {
-      const overviewData = await ChatbotOverviewService.fetchOverviewData();
+      const overviewData = await ChatbotOverviewService.fetchOverviewData(
+        startDate,
+        endDate
+      );
       setData(overviewData);
-      
+
       if (showToast) {
         toast.success("Data berhasil dimuat");
       }
@@ -49,25 +52,15 @@ export const useChatbotOverviewData = (autoRefresh: boolean = false) => {
     }
   };
 
-  // Initial fetch
+  // Fetch data whenever date range changes
   useEffect(() => {
     fetchData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate]);
 
-  // Auto refresh
-  useEffect(() => {
-    if (!autoRefresh) return;
-
-    const interval = setInterval(() => {
-      fetchData(false); // Silent refresh
-    }, OVERVIEW_CONSTANTS.AUTO_REFRESH_INTERVAL);
-
-    return () => clearInterval(interval);
-  }, [autoRefresh]);
-
-  return { 
+  return {
     data,
-    isLoading, 
-    refetch: () => fetchData(true)
+    isLoading,
+    refetch: () => fetchData(true),
   };
 };

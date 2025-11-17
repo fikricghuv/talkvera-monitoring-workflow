@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { QueueItem } from "@/types/processQueue";
 import { QueueStatusBadge } from "./QueueStatusBadge";
 import { formatDate } from "@/utils/queueUtils";
+import { PaginationControls } from "@/components/PaginationControls";
 
 interface QueueTableProps {
   queueItems: QueueItem[];
@@ -11,12 +12,15 @@ interface QueueTableProps {
   totalCount: number;
   currentPage: number;
   itemsPerPage: number;
+  totalPages: number;
   debouncedSearchTerm: string;
   statusFilter: string;
   startDate: string;
   endDate: string;
   onRefresh: () => void;
   onRowClick: (item: QueueItem) => void;
+  onPageChange: (page: number) => void;
+  onItemsPerPageChange: (value: string) => void;
 }
 
 export const QueueTable = ({
@@ -25,12 +29,15 @@ export const QueueTable = ({
   totalCount,
   currentPage,
   itemsPerPage,
+  totalPages,
   debouncedSearchTerm,
   statusFilter,
   startDate,
   endDate,
   onRefresh,
-  onRowClick
+  onRowClick,
+  onPageChange,
+  onItemsPerPageChange
 }: QueueTableProps) => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalCount);
@@ -104,6 +111,18 @@ export const QueueTable = ({
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls - Di dalam CardContent */}
+        {totalCount > 0 && (
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            itemsPerPage={itemsPerPage}
+            isLoading={isLoading}
+            onPageChange={onPageChange}
+            onItemsPerPageChange={onItemsPerPageChange}
+          />
+        )}
       </CardContent>
     </Card>
   );

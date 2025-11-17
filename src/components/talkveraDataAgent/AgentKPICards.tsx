@@ -2,7 +2,7 @@
 
 import { MessageSquare, CheckCircle, XCircle, Clock, Database, FileText, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { AnimatedMetricCard } from '@/components/AnimatedMetricCard';
-import type { AgentOverviewKPI } from '@/types/dataAgent';
+import type { AgentOverviewKPI } from '@/types/dataAgentOverview';
 import { calculateSuccessRate, formatResponseTime } from '@/utils/dataAgentUtils';
 
 interface AgentKPICardsProps {

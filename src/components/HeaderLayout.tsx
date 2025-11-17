@@ -1,7 +1,7 @@
-import { ReactNode } from "react";
+import { ReactNode , useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "../AppSidebar";
+import { AppSidebar } from "./AppSidebar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,17 +18,32 @@ import {
   LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
-interface DashboardLayoutProps {
+interface HeaderLayoutProps {
   children: ReactNode;
 }
 
-function DashboardHeader() {
+function HeaderLayoutHeader() {
   const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   
-  const handleLogout = () => {
-    toast.success("Berhasil logout!");
-    navigate("/login");
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        toast.error("Gagal logout: " + error.message);
+        return;
+      }
+      
+      toast.success("Berhasil logout!");
+      navigate("/login", { replace: true });
+    } catch (error) {
+      toast.error("Terjadi kesalahan saat logout");
+    }
   };
 
   const handleProfile = () => {
@@ -114,13 +129,13 @@ function DashboardHeader() {
 }
 
 // Komponen Layout Utama dengan enhanced styling
-export function DashboardLayout({ children }: DashboardLayoutProps) {
+export function HeaderLayout({ children }: HeaderLayoutProps) {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         <div className="flex-1 flex flex-col">
-          <DashboardHeader />
+          <HeaderLayoutHeader />
           <main className="flex-1 p-6 bg-gradient-to-br from-background via-background to-muted/10 overflow-auto">
             <div className="max-w-[1600px] mx-auto animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
               {children}

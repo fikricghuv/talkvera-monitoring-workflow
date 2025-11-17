@@ -8,7 +8,6 @@ import { ExecutionHeader } from "@/components/executionDetail/ExecutionHeader";
 import { ExecutionMetrics } from "@/components/executionDetail/ExecutionMetrics";
 import { ExecutionFilters } from "@/components/executionDetail/ExecutionFilters";
 import { ExecutionTable } from "@/components/executionDetail/ExecutionTable";
-import { PaginationControls } from "@/components/PaginationControls";
 import { ExecutionDetailModal } from "@/components/executionDetail/ExecutionDetailModal";
 
 const DetailExecution = () => {
@@ -114,27 +113,20 @@ const DetailExecution = () => {
           uniqueStatuses={uniqueStatuses}
         />
 
+        {/* ExecutionTable dengan Pagination di dalamnya */}
         <ExecutionTable
           nodeExecutions={nodeExecutions}
           isLoading={isLoading}
           totalCount={totalCount}
           currentPage={currentPage}
           itemsPerPage={itemsPerPage}
+          totalPages={totalPages}
           onRefresh={handleRefresh}
           onDownloadReport={handleDownloadReport}
           onRowClick={handleRowClick}
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={handleItemsPerPageChange}
         />
-
-        {totalCount > 0 && (
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            itemsPerPage={itemsPerPage}
-            isLoading={isLoading}
-            onPageChange={handlePageChange}
-            onItemsPerPageChange={handleItemsPerPageChange}
-          />
-        )}
 
         <ExecutionDetailModal
           isOpen={isModalOpen}

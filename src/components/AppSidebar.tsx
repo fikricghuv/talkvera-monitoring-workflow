@@ -1,4 +1,4 @@
-import { useState }from "react"
+import { useState } from "react";
 import {
   LayoutDashboard,
   Workflow,
@@ -11,6 +11,7 @@ import {
   Network,
   FolderKanban,
   ChevronDown,
+  Loader2,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -41,8 +42,9 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { supabase } from "@/integrations/supabase/client";
 
-// --- Tipe dan Data Menu (Tidak Berubah) ---
+// --- Tipe dan Data Menu ---
 
 type MenuItemType = {
   title: string;
@@ -52,7 +54,6 @@ type MenuItemType = {
 };
 
 const menuItems: MenuItemType[] = [
-  // ... (data menu Anda tidak berubah)
   {
     title: "Dashboard",
     url: "/dashboard",
@@ -115,12 +116,12 @@ const menuItems: MenuItemType[] = [
   },
 ];
 
-// --- Komponen Helper untuk Popover (Tidak Berubah) ---
+// --- Komponen Helper untuk Popover ---
 
 const RenderCollapsedSubmenu = ({ item }: { item: MenuItemType }) => {
   const navigate = useNavigate();
   const location = useLocation();
-
+  
   const isItemActive = location.pathname === item.url;
   const isGroupActive = location.pathname.startsWith(item.url);
 
@@ -164,7 +165,7 @@ const RenderCollapsedSubmenu = ({ item }: { item: MenuItemType }) => {
   );
 };
 
-// --- Komponen Rekursif untuk Render Menu (UTAMA) ---
+// --- Komponen Rekursif untuk Render Menu ---
 
 const RenderMenuItem = ({ item, level = 0 }: { item: MenuItemType; level?: number }) => {
   const navigate = useNavigate();
@@ -183,8 +184,6 @@ const RenderMenuItem = ({ item, level = 0 }: { item: MenuItemType; level?: numbe
         style={{
           animationDelay: `${level * 50}ms`,
         }}
-        // 🔽 --- PERBAIKAN 1 ---
-        // Hanya jalankan 'animate-in' jika level === 0
         className={`
           transition-all
           ${level === 0 ? 'animate-in fade-in slide-in-from-left-2 duration-300' : ''}
@@ -242,8 +241,6 @@ const RenderMenuItem = ({ item, level = 0 }: { item: MenuItemType; level?: numbe
   if (collapsed) {
     return (
       <SidebarMenuItem
-        // 🔽 --- PERBAIKAN 2 ---
-        // Hanya jalankan 'animate-in' jika level === 0
         className={`
           transition-all
           ${level === 0 ? 'animate-in fade-in slide-in-from-left-2 duration-300' : ''}
@@ -298,8 +295,6 @@ const RenderMenuItem = ({ item, level = 0 }: { item: MenuItemType; level?: numbe
       style={{
         animationDelay: `${level * 50}ms`,
       }}
-      // 🔽 --- PERBAIKAN 3 ---
-      // Hanya jalankan 'animate-in' jika level === 0
       className={`
         transition-all
         ${level === 0 ? 'animate-in fade-in slide-in-from-left-2 duration-300' : ''}
@@ -354,7 +349,6 @@ const RenderMenuItem = ({ item, level = 0 }: { item: MenuItemType; level?: numbe
         <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
           <SidebarMenu className="space-y-1 mt-1">
             {item.children.map((child) => (
-              // Saat memanggil rekursif, 'level' akan menjadi 1 (atau lebih)
               <RenderMenuItem key={child.title} item={child} level={level + 1} />
             ))}
           </SidebarMenu>
@@ -363,20 +357,35 @@ const RenderMenuItem = ({ item, level = 0 }: { item: MenuItemType; level?: numbe
     </SidebarMenuItem>
   );
 };
-// --- Akhir Komponen Rekursif ---
-
 
 // --- Komponen AppSidebar (Header & Footer) ---
 export function AppSidebar({ isMobileDrawer = false }) {
   const navigate = useNavigate();
   const { state, toggleSidebar } = useSidebar();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   
   const collapsed = isMobileDrawer ? false : state === "collapsed";
   const location = useLocation();
 
-  const handleLogout = () => {
-    toast.success("Berhasil logout!");
-    navigate("/login");
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        toast.error("Gagal logout: " + error.message);
+        setIsLoggingOut(false);
+        return;
+      }
+      
+      toast.success("Berhasil logout!");
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error("Terjadi kesalahan saat logout");
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -434,7 +443,6 @@ export function AppSidebar({ isMobileDrawer = false }) {
                 <RenderMenuItem 
                   key={item.title} 
                   item={item}
-                  // Item level atas ini akan memiliki 'level' default 0
                 />
               ))}
             </SidebarMenu>
@@ -457,6 +465,7 @@ export function AppSidebar({ isMobileDrawer = false }) {
                 ${location.pathname.startsWith("/profile") ? 'bg-primary/15 text-primary' : ''}
                 ${collapsed ? 'justify-center' : 'justify-start hover:translate-x-1'}
               `}
+              disabled={isLoggingOut}
             >
               <NavLink to="/profile" className={`flex items-center w-full ${collapsed ? 'justify-center' : 'justify-start'}`}>
                 <Settings
@@ -479,24 +488,35 @@ export function AppSidebar({ isMobileDrawer = false }) {
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={handleLogout}
+              disabled={isLoggingOut}
               className={`
                 group relative overflow-hidden
                 transition-all duration-300 ease-in-out
                 hover:bg-red-500/10 text-red-500
                 ${collapsed ? 'justify-center' : 'justify-start hover:translate-x-1'}
+                ${isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''}
               `}
             >
               <div className={`flex items-center w-full ${collapsed ? 'justify-center' : 'justify-start'}`}>
-                <LogOut
-                  className={`
-                    !h-5 !w-5 text-red-500 transition-all duration-300
-                    ${collapsed ? '' : 'ml-2'}
-                    ${collapsed ? 'group-hover:scale-110' : 'group-hover:scale-110'}
-                  `}
-                />
+                {isLoggingOut ? (
+                  <Loader2
+                    className={`
+                      !h-5 !w-5 text-red-500 animate-spin
+                      ${collapsed ? '' : 'ml-2'}
+                    `}
+                  />
+                ) : (
+                  <LogOut
+                    className={`
+                      !h-5 !w-5 text-red-500 transition-all duration-300
+                      ${collapsed ? '' : 'ml-2'}
+                      ${collapsed ? 'group-hover:scale-110' : 'group-hover:scale-110'}
+                    `}
+                  />
+                )}
                 {!collapsed && (
                   <span className="text-sm pl-2 transition-all duration-300 group-hover:text-red-600">
-                    Logout
+                    {isLoggingOut ? 'Logging out...' : 'Logout'}
                   </span>
                 )}
               </div>

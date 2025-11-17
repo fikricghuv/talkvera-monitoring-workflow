@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import type { AgentTimeSeriesData } from '@/types/dataAgent';
+import type { AgentTimeSeriesData } from '@/types/dataAgentOverview';
 import { AGENT_CONSTANTS } from '@/constants/dataAgent';
 
 interface AgentResponseTimeChartProps {

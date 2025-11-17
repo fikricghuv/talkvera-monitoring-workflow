@@ -9,8 +9,8 @@ import type {
   AgentRiskDistribution,
   AgentTopUser,
   AgentOverviewFilters,
-} from '@/types/dataAgent';
-import { fetchOverviewData } from '@/services/dataAgentService';
+} from '@/types/dataAgentOverview';
+import { fetchOverviewData } from '@/services/dataAgentOverviewService';
 import {
   calculateSuccessRate,
   calculateAverage,
@@ -40,15 +40,13 @@ export const useAgentOverview = (filters: AgentOverviewFilters) => {
   const [topUsers, setTopUsers] = useState<AgentTopUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 🔽 PERUBAHAN 1: Destrukturisasi filters untuk mendapatkan nilai primitif
-  // Ini digunakan untuk menstabilkan dependensi di useCallback
+  // Extract primitive values from filters for stable dependencies
   const { startDate, endDate, userFilter } = filters;
 
   /**
    * Calculate KPI data from raw data
    */
   const calculateKPI = useCallback((data: any) => {
-    // ... (fungsi ini tidak berubah) ...
     const { queries, riskLogs } = data;
 
     const successfulQueries = queries.filter((q: any) => q.is_success).length;
@@ -81,7 +79,6 @@ export const useAgentOverview = (filters: AgentOverviewFilters) => {
    * Calculate time series data
    */
   const calculateTimeSeries = useCallback((queries: any[], dateRange: { start: string; end: string }) => {
-    // ... (fungsi ini tidak berubah) ...
     const grouped = groupByDate(queries, dateRange);
     
     const seriesData: AgentTimeSeriesData[] = [];
@@ -112,7 +109,6 @@ export const useAgentOverview = (filters: AgentOverviewFilters) => {
    * Calculate method distribution
    */
   const calculateMethodDistribution = useCallback((queries: any[]) => {
-    // ... (fungsi ini tidak berubah) ...
     const sqlCount = queries.filter(q => q.used_sql && !q.used_rag).length;
     const ragCount = queries.filter(q => q.used_rag && !q.used_sql).length;
     const bothCount = queries.filter(q => q.used_sql && q.used_rag).length;
@@ -132,7 +128,6 @@ export const useAgentOverview = (filters: AgentOverviewFilters) => {
    * Calculate risk distribution
    */
   const calculateRiskDistribution = useCallback((riskLogs: any[]) => {
-    // ... (fungsi ini tidak berubah) ...
     const distribution = new Map<string, Map<string, number>>();
 
     riskLogs.forEach(risk => {
@@ -157,7 +152,6 @@ export const useAgentOverview = (filters: AgentOverviewFilters) => {
    * Calculate top users
    */
   const calculateTopUsers = useCallback((queries: any[]) => {
-    // ... (fungsi ini tidak berubah) ...
     const userMap = new Map<string, { total: number; successful: number }>();
 
     queries.forEach(query => {
@@ -188,8 +182,14 @@ export const useAgentOverview = (filters: AgentOverviewFilters) => {
     setIsLoading(true);
 
     try {
-      // 'filters' di sini merujuk ke 'filters' yang diterima oleh hook
-      const data = await fetchOverviewData(filters);
+      // Reconstruct filters object from primitive values
+      const currentFilters: AgentOverviewFilters = {
+        startDate,
+        endDate,
+        userFilter,
+      };
+
+      const data = await fetchOverviewData(currentFilters);
 
       // Calculate KPI
       const kpi = calculateKPI(data);
@@ -197,8 +197,8 @@ export const useAgentOverview = (filters: AgentOverviewFilters) => {
 
       // Calculate time series
       const timeSeries = calculateTimeSeries(data.queries, {
-        start: filters.startDate,
-        end: filters.endDate,
+        start: startDate,
+        end: endDate,
       });
       setTimeSeriesData(timeSeries);
 
@@ -220,18 +220,16 @@ export const useAgentOverview = (filters: AgentOverviewFilters) => {
     } finally {
       setIsLoading(false);
     }
-    // 🔽 PERUBAHAN 2: Ubah dependensi dari [filters, ...]
   }, [
-      startDate, 
-      endDate, 
-      userFilter, 
-    // 🔼 Menjadi nilai primitif
-      calculateKPI, 
-      calculateTimeSeries, 
-      calculateMethodDistribution, 
-      calculateRiskDistribution, 
-      calculateTopUsers
-    ]);
+    startDate,
+    endDate,
+    userFilter,
+    calculateKPI,
+    calculateTimeSeries,
+    calculateMethodDistribution,
+    calculateRiskDistribution,
+    calculateTopUsers
+  ]);
 
   /**
    * Refresh data
@@ -241,10 +239,10 @@ export const useAgentOverview = (filters: AgentOverviewFilters) => {
     toast.success(MESSAGES.SUCCESS_REFRESH);
   }, [fetchData]);
 
-  // Fetch data on mount and when filters change
+  // Fetch data on mount and when date range changes
   useEffect(() => {
     fetchData();
-  }, [fetchData]); // Ini sekarang aman karena fetchData sudah stabil
+  }, [fetchData]);
 
   return {
     kpiData,

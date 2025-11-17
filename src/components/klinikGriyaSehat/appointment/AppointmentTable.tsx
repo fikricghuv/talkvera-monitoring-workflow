@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Appointment } from "@/types/appointments";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
 import { formatAppointmentDate, isAppointmentToday, isAppointmentPast } from "@/utils/appointmentUtils";
+import { PaginationControls } from "@/components/PaginationControls";
 
 interface AppointmentTableProps {
   appointments: Appointment[];
@@ -14,9 +15,12 @@ interface AppointmentTableProps {
   totalCount: number;
   currentPage: number;
   itemsPerPage: number;
+  totalPages: number;
   onRefresh: () => void;
   onRowClick: (appointment: Appointment) => void;
   onUpdateStatus: (id: string, newStatus: string) => void;
+  onPageChange: (page: number) => void;
+  onItemsPerPageChange: (value: string) => void;
 }
 
 export const AppointmentTable = ({
@@ -25,9 +29,12 @@ export const AppointmentTable = ({
   totalCount,
   currentPage,
   itemsPerPage,
+  totalPages,
   onRefresh,
   onRowClick,
-  onUpdateStatus
+  onUpdateStatus,
+  onPageChange,
+  onItemsPerPageChange
 }: AppointmentTableProps) => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalCount);
@@ -47,9 +54,9 @@ export const AppointmentTable = ({
         </div>
         <div>
           <Button 
-            className="mr-2" 
             onClick={onRefresh} 
             variant="outline" 
+            size="sm"
             disabled={isLoading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
@@ -58,7 +65,7 @@ export const AppointmentTable = ({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="rounded-lg border overflow-x-auto shadow-inner bg-white">
+        <div className="rounded-md border overflow-x-auto">
           <Table>
             <TableHeader className="sticky top-0 bg-muted/50 z-10 border-b">
               <TableRow>
@@ -90,9 +97,9 @@ export const AppointmentTable = ({
                 appointments.map((appointment) => (
                   <TableRow 
                     key={appointment.id} 
-                    className={`cursor-pointer hover:bg-blue-50/50 transition-colors ${
+                    className={`cursor-pointer hover:bg-muted/50 transition-colors ${
                       isAppointmentToday(appointment.appointment_date_time) 
-                        ? 'bg-yellow-50/30' 
+                        ? 'bg-muted-50/30' 
                         : isAppointmentPast(appointment.appointment_date_time)
                         ? 'opacity-60'
                         : ''
@@ -152,6 +159,18 @@ export const AppointmentTable = ({
             </TableBody>
           </Table>
         </div>
+
+        {/* Pagination Controls - Di dalam CardContent */}
+        {totalCount > 0 && (
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            itemsPerPage={itemsPerPage}
+            isLoading={isLoading}
+            onPageChange={onPageChange}
+            onItemsPerPageChange={onItemsPerPageChange}
+          />
+        )}
       </CardContent>
     </Card>
   );

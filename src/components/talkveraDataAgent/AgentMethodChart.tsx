@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import type { AgentMethodDistribution } from '@/types/dataAgent';
+import type { AgentMethodDistribution } from '@/types/dataAgentOverview';
 
 interface AgentMethodChartProps {
   data: AgentMethodDistribution[];

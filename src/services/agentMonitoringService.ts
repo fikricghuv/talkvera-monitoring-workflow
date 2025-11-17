@@ -2,7 +2,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import type { QueryMonitoringFilters, QueryWithDetails } from "@/types/agentMonitoring";
-import type { AgentQuery, AgentSQLLog, AgentRAGLog, AgentRiskLog } from "@/types/dataAgent";
+import type { AgentQuery, AgentSQLLog, AgentRAGLog, AgentRiskLog } from "@/types/dataAgentOverview";
 
 /**
  * Apply filters to query

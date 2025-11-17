@@ -7,7 +7,6 @@ import { AppointmentHeader } from "@/components/klinikGriyaSehat/appointment/App
 import { AppointmentMetrics } from "@/components/klinikGriyaSehat/appointment/AppointmentMetrics";
 import { AppointmentFilters } from "@/components/klinikGriyaSehat/appointment/AppointmentFilters";
 import { AppointmentTable } from "@/components/klinikGriyaSehat/appointment/AppointmentTable";
-import { PaginationControls } from "@/components/PaginationControls";
 import { AppointmentDetailModal } from "@/components/klinikGriyaSehat/appointment/AppointmentDetailModal";
 
 const AppointmentManagement = () => {
@@ -105,27 +104,20 @@ const AppointmentManagement = () => {
           uniqueStatuses={uniqueStatuses}
         />
 
+        {/* AppointmentTable dengan Pagination di dalamnya */}
         <AppointmentTable
           appointments={appointments}
           isLoading={isLoading}
           totalCount={totalCount}
           currentPage={currentPage}
           itemsPerPage={itemsPerPage}
+          totalPages={totalPages}
           onRefresh={handleRefresh}
           onRowClick={handleRowClick}
           onUpdateStatus={handleUpdateStatus}
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={handleItemsPerPageChange}
         />
-
-        {totalCount > 0 && (
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            itemsPerPage={itemsPerPage}
-            isLoading={isLoading}
-            onPageChange={handlePageChange}
-            onItemsPerPageChange={handleItemsPerPageChange}
-          />
-        )}
 
         <AppointmentDetailModal
           isOpen={isModalOpen}

@@ -7,15 +7,16 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import DetailExecution from "./pages/DetailExecution";
 import ProcessQueue from "./pages/ProcessQueue";
-import { DashboardLayout } from "./components/dashboard/DashboardLayout";
+import { HeaderLayout } from "./components/HeaderLayout";
 import NotFound from "./pages/NotFound";
 import WorkflowExecution from "./pages/WorkflowExecution";
 import Profile from "./pages/Profile";
-import WorkflowInformation from "./pages/WorkflowInformation"
-import ChatbotOverview  from "./pages/klinik-griya-sehat/ChatbotOverview"
-import AppointmentManagement from "./pages/klinik-griya-sehat/AppointmentManagement"
-import AgentOverview from "./pages/talkvera-data-agent/DataAgentOverview"
-import AgentMonitoring from "./pages/talkvera-data-agent/AgentMonitoring"
+import WorkflowInformation from "./pages/WorkflowInformation";
+import ChatbotOverview from "./pages/klinik-griya-sehat/ChatbotOverview";
+import AppointmentManagement from "./pages/klinik-griya-sehat/AppointmentManagement";
+import AgentOverview from "./pages/talkvera-data-agent/DataAgentOverview";
+import AgentMonitoring from "./pages/talkvera-data-agent/AgentMonitoring";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -28,86 +29,109 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
+          
+          {/* Protected Routes */}
           <Route
             path="/dashboard"
             element={
-              <DashboardLayout>
-                <Dashboard />
-              </DashboardLayout>
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <Dashboard />
+                </HeaderLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/workflow-information"
             element={
-              <DashboardLayout>
-                <WorkflowInformation />
-              </DashboardLayout>
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <WorkflowInformation />
+                </HeaderLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/workflow-execution"
             element={
-              <DashboardLayout>
-                <WorkflowExecution />
-              </DashboardLayout>
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <WorkflowExecution />
+                </HeaderLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/node-execution"
             element={
-              <DashboardLayout>
-                <DetailExecution />
-              </DashboardLayout>
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <DetailExecution />
+                </HeaderLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/queue-execution"
             element={
-              <DashboardLayout>
-                <ProcessQueue />
-              </DashboardLayout>
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <ProcessQueue />
+                </HeaderLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/profile"
             element={
-              <DashboardLayout>
-                <Profile />
-              </DashboardLayout>
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <Profile />
+                </HeaderLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/projects/klinik-griya-sehat/overview"
             element={
-              <DashboardLayout>
-                <ChatbotOverview />
-              </DashboardLayout>
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <ChatbotOverview />
+                </HeaderLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/projects/klinik-griya-sehat/appointment"
             element={
-              <DashboardLayout>
-                <AppointmentManagement />
-              </DashboardLayout>
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <AppointmentManagement />
+                </HeaderLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/projects/talkvera-data-agent/overview"
             element={
-              <DashboardLayout>
-                <AgentOverview />
-              </DashboardLayout>
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <AgentOverview />
+                </HeaderLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/projects/talkvera-data-agent/query-monitoring"
             element={
-              <DashboardLayout>
-                <AgentMonitoring />
-              </DashboardLayout>
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <AgentMonitoring />
+                </HeaderLayout>
+              </ProtectedRoute>
             }
           />
+          
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
