@@ -6,7 +6,7 @@ import { QueueSkeleton } from "@/components/queueExecution/QueueSkeleton";
 import { QueueHeader } from "@/components/queueExecution/QueueHeader";
 import { QueueMetrics } from "@/components/queueExecution/QueueMetrics";
 import { QueueFilters } from "@/components/queueExecution/QueueFilters";
-import { QueueTable } from "@/components/queueExecution/QueueTable";
+import { QueueTable } from "@/components/queueExecution/QueueTable"; 
 import { QueueDetailModal } from "@/components/queueExecution/QueueDetailModal";
 
 const ProcessQueue = () => {
@@ -20,6 +20,9 @@ const ProcessQueue = () => {
   // Modal State
   const [selectedQueueItem, setSelectedQueueItem] = useState<QueueItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Local Loading State untuk Webhook
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
@@ -70,12 +73,57 @@ const ProcessQueue = () => {
     refetch();
   };
 
+  const handleProcessPending = async () => {
+    // Prevent double click
+    if (isProcessing) return;
+
+    try {
+      setIsProcessing(true);
+      
+      // URL Webhook n8n
+      const webhookUrl = "https://n8n.server.talkvera.com/webhook/d6cb25f3-f7d2-4dc3-9e98-257bdfc9888d";
+      
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // ⚠️ PENTING: Ganti 'Nama-Header-Auth' dan 'Value-Nya' sesuai 
+          // dengan yang ada di Credential n8n kamu ("Header Auth landing-page")
+          // Contoh: "Authorization": "Bearer rahasia123" atau "x-api-key": "12345"
+          "x-api-key": "landing-page" 
+        },
+        body: JSON.stringify({
+          action: "process_pending_queue",
+          triggered_at: new Date().toISOString(),
+          user_trigger: "admin_dashboard" 
+        })
+      });
+
+      if (response.ok) {
+        toast.success("Perintah proses berhasil dikirim ke n8n!");
+        // Tunggu sebentar sebelum refresh agar n8n sempat memproses status awal jika cepat
+        setTimeout(() => {
+            refetch();
+        }, 1000);
+      } else {
+        console.error("Webhook Error:", response.status, response.statusText);
+        toast.error(`Gagal trigger webhook: ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Error hitting webhook:", error);
+      toast.error("Terjadi kesalahan koneksi ke server n8n");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleRowClick = (item: QueueItem) => {
     setSelectedQueueItem(item);
     setIsModalOpen(true);
   };
 
-  if (isLoading && currentPage === 1) {
+  // Show skeleton only on initial load
+  if (isLoading && currentPage === 1 && !isProcessing) {
     return <QueueSkeleton />;
   }
 
@@ -100,7 +148,7 @@ const ProcessQueue = () => {
         {/* QueueTable dengan Pagination di dalamnya */}
         <QueueTable
           queueItems={queueItems}
-          isLoading={isLoading}
+          isLoading={isLoading || isProcessing} 
           totalCount={totalCount}
           currentPage={currentPage}
           itemsPerPage={itemsPerPage}
@@ -109,7 +157,12 @@ const ProcessQueue = () => {
           statusFilter={statusFilter}
           startDate={startDate}
           endDate={endDate}
+          
+          // 👇 Menggunakan 'newQueue' karena di useProcessQueue.ts key-nya adalah 'newQueue'
+          pendingCount={kpiData?.newQueue || 0}
+          
           onRefresh={handleRefresh}
+          onProcess={handleProcessPending}
           onRowClick={handleRowClick}
           onPageChange={handlePageChange}
           onItemsPerPageChange={handleItemsPerPageChange}

@@ -1,4 +1,4 @@
-import { RefreshCw, Loader2 } from "lucide-react";
+import { RefreshCw, Loader2, FileClock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QueueItem } from "@/types/processQueue";
@@ -17,7 +17,9 @@ interface QueueTableProps {
   statusFilter: string;
   startDate: string;
   endDate: string;
+  pendingCount: number; // Pastikan ini dipassing dari parent
   onRefresh: () => void;
+  onProcess: () => void;
   onRowClick: (item: QueueItem) => void;
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (value: string) => void;
@@ -34,7 +36,9 @@ export const QueueTable = ({
   statusFilter,
   startDate,
   endDate,
+  pendingCount,
   onRefresh,
+  onProcess,
   onRowClick,
   onPageChange,
   onItemsPerPageChange
@@ -51,7 +55,20 @@ export const QueueTable = ({
             Menampilkan {totalCount > 0 ? startIndex + 1 : 0}-{endIndex} dari {totalCount} data
           </p>
         </div>
-        <div>
+        <div className="justify-between">
+          {/* Button onProcess dengan logika disable yang diperbarui */}
+          <Button 
+            onClick={onProcess} 
+            variant="outline" 
+            size="sm" 
+            // PERUBAHAN DISINI: Disable jika loading, ATAU pendingCount tidak ada, ATAU pendingCount 0
+            disabled={isLoading || !pendingCount || pendingCount === 0} 
+            className="mr-2"
+          >
+            <FileClock className={`h-4 w-4 mr-2}`} />
+            Proses Data Pending {pendingCount > 0 ? `(${pendingCount})` : ''}
+          </Button>
+          
           <Button onClick={onRefresh} variant="outline" size="sm" disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
@@ -112,7 +129,7 @@ export const QueueTable = ({
           </table>
         </div>
 
-        {/* Pagination Controls - Di dalam CardContent */}
+        {/* Pagination Controls */}
         {totalCount > 0 && (
           <PaginationControls
             currentPage={currentPage}

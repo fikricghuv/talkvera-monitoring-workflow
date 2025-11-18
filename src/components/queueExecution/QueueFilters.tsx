@@ -61,7 +61,7 @@ export const QueueFilters = ({
             </SelectContent>
           </Select>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <Input
               type="date"
               placeholder="Tanggal Mulai"
@@ -69,7 +69,7 @@ export const QueueFilters = ({
               onChange={(e) => setStartDate(e.target.value)}
               className="pl-7"
             />
-
+            <span className="text-sm text-muted-foreground">to</span>
             <Input
               type="date"
               placeholder="Tanggal Akhir"
