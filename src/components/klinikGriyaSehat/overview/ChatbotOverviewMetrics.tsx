@@ -1,8 +1,7 @@
-// components/overview/ChatbotOverviewMetrics.tsx
-
 import React from "react";
 import { Users, MessageSquare, CheckCircle2, Calendar, Clock, AlertCircle } from "lucide-react";
 import { AnimatedMetricCard } from "@/components/AnimatedMetricCard";
+// Pastikan path ini sesuai dengan struktur folder Anda (misal: @/types/...)
 import { KPIData } from "../../../types/chatbotOverview";
 
 interface ChatbotOverviewMetricsProps {
@@ -11,17 +10,19 @@ interface ChatbotOverviewMetricsProps {
 
 /**
  * Component untuk menampilkan 6 KPI metrics cards
+ * Subtitle disesuaikan dengan logika Date Filter pada Service
  */
 export const ChatbotOverviewMetrics: React.FC<ChatbotOverviewMetricsProps> = ({ kpiData }) => {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       <AnimatedMetricCard
-        title="Total Pasien"
+        title="Total Pasien Baru"
         value={kpiData.totalPatients}
         suffix=""
         icon={<Users className="h-5 w-5 text-blue-500" />}
         borderColor="border-blue-500"
-        subtitle="Terdaftar di sistem"
+        // Updated: Lebih akurat karena query berdasarkan created_at dalam range tanggal
+        subtitle="Pasien baru periode ini"
         decimals={0}
       />
       
@@ -41,7 +42,7 @@ export const ChatbotOverviewMetrics: React.FC<ChatbotOverviewMetricsProps> = ({ 
         suffix=""
         icon={<CheckCircle2 className="h-5 w-5 text-green-600" />}
         borderColor="border-green-600"
-        subtitle="Total sesi completed"
+        subtitle="Sesi berhasil ditutup"
         decimals={0}
       />
 
@@ -51,7 +52,7 @@ export const ChatbotOverviewMetrics: React.FC<ChatbotOverviewMetricsProps> = ({ 
         suffix=""
         icon={<MessageSquare className="h-5 w-5 text-purple-500" />}
         borderColor="border-purple-500"
-        subtitle="Semua percakapan"
+        subtitle="Interaksi chat masuk/keluar"
         decimals={0}
         useLocaleString={true}
       />
@@ -62,17 +63,18 @@ export const ChatbotOverviewMetrics: React.FC<ChatbotOverviewMetricsProps> = ({ 
         suffix=""
         icon={<Calendar className="h-5 w-5 text-indigo-500" />}
         borderColor="border-indigo-500"
-        subtitle="Semua jadwal temu"
+        subtitle="Jadwal dibuat periode ini"
         decimals={0}
       />
 
       <AnimatedMetricCard
-        title="Appointment Pending"
+        title="Appointment Booked"
         value={kpiData.pendingAppointments}
         suffix=""
         icon={<AlertCircle className="h-5 w-5 text-orange-500" />}
         borderColor="border-orange-500"
-        subtitle="Menunggu konfirmasi"
+        // Updated: Mengacu pada status 'BOOKED' di tabel dt_appointments
+        subtitle="Status: Booked"
         decimals={0}
       />
     </div>

@@ -1,5 +1,3 @@
-// services/chatbotOverviewService.ts
-
 import { supabase } from "@/integrations/supabase/client";
 import { 
   KPIData, 
@@ -11,6 +9,7 @@ import { OVERVIEW_CONSTANTS } from "../constants/chatbotOverview";
 
 /**
  * Service untuk handle semua operasi data chatbot overview
+ * Disesuaikan dengan schema Supabase: ms_patients, dt_chat_sessions, dt_chat_messages, dt_appointments
  */
 export class ChatbotOverviewService {
   /**
@@ -47,60 +46,63 @@ export class ChatbotOverviewService {
 
   /**
    * Fetch KPI data (metrics) dengan date filter
-   * @param startDate - Tanggal mulai filter (ISO string)
-   * @param endDate - Tanggal akhir filter (ISO string)
    */
   private static async fetchKPIData(startDate: string, endDate: string): Promise<KPIData> {
     try {
-      // Fetch all data in parallel dengan date filter
       const [
-        patientsResult,
+        newPatientsResult,
         activeSessionsResult,
         completedSessionsResult,
         messagesResult,
         appointmentsResult,
         pendingAppointmentsResult,
       ] = await Promise.all([
-        // Total Patients (count sessions dalam date range)
+        // 1. Total New Patients (Registered in this period)
+        // Menggunakan tabel ms_patients dan kolom created_at
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any)
-          .select("patient_id", { count: 'exact', head: true })
-          .gte("start_time", startDate)
-          .lte("start_time", endDate),
+          .from(OVERVIEW_CONSTANTS.TABLE_PATIENTS)
+          .select("id", { count: 'exact', head: true })
+          .gte("created_at", startDate)
+          .lte("created_at", endDate),
         
-        // Active Sessions (IN_PROGRESS)
+        // 2. Active Sessions (IN_PROGRESS)
+        // Menggunakan dt_chat_sessions, kolom start_time
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any)
+          .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS)
           .select("id", { count: 'exact', head: true })
           .eq("status", "IN_PROGRESS")
           .gte("start_time", startDate)
           .lte("start_time", endDate),
         
-        // Completed Sessions
+        // 3. Completed Sessions
+        // Menggunakan dt_chat_sessions, kolom start_time
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any)
+          .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS)
           .select("id", { count: 'exact', head: true })
           .eq("status", "COMPLETED")
           .gte("start_time", startDate)
           .lte("start_time", endDate),
         
-        // Total Messages
+        // 4. Total Messages
+        // PERBAIKAN: Schema menggunakan kolom "timestamp", bukan "created_at"
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_MESSAGES as any)
+          .from(OVERVIEW_CONSTANTS.TABLE_MESSAGES)
+          .select("id", { count: 'exact', head: true })
+          .gte("timestamp", startDate)
+          .lte("timestamp", endDate),
+        
+        // 5. Total Appointments
+        // Menggunakan dt_appointments, kolom created_at (kapan dibuat) atau appointment_date_time (jadwal)
+        // Disini kita pakai created_at untuk melihat booking yang DIBUAT pada periode ini
+        supabase
+          .from(OVERVIEW_CONSTANTS.TABLE_APPOINTMENTS)
           .select("id", { count: 'exact', head: true })
           .gte("created_at", startDate)
           .lte("created_at", endDate),
         
-        // Total Appointments
+        // 6. Pending Appointments (BOOKED status)
         supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_APPOINTMENTS as any)
-          .select("id", { count: 'exact', head: true })
-          .gte("created_at", startDate)
-          .lte("created_at", endDate),
-        
-        // Pending Appointments (BOOKED status)
-        supabase
-          .from(OVERVIEW_CONSTANTS.TABLE_APPOINTMENTS as any)
+          .from(OVERVIEW_CONSTANTS.TABLE_APPOINTMENTS)
           .select("id", { count: 'exact', head: true })
           .eq("status", "BOOKED")
           .gte("created_at", startDate)
@@ -108,7 +110,7 @@ export class ChatbotOverviewService {
       ]);
 
       return {
-        totalPatients: patientsResult.count || 0,
+        totalPatients: newPatientsResult.count || 0,
         activeSessions: activeSessionsResult.count || 0,
         completedSessions: completedSessionsResult.count || 0,
         totalMessages: messagesResult.count || 0,
@@ -117,22 +119,30 @@ export class ChatbotOverviewService {
       };
     } catch (error) {
       console.error("Error fetching KPI data:", error);
-      throw error;
+      // Return default values on error to prevent UI crash
+      return {
+        totalPatients: 0,
+        activeSessions: 0,
+        completedSessions: 0,
+        totalMessages: 0,
+        totalAppointments: 0,
+        pendingAppointments: 0,
+      };
     }
   }
 
   /**
-   * Fetch recent sessions dengan join ke patients dan date filter
-   * @param startDate - Tanggal mulai filter (ISO string)
-   * @param endDate - Tanggal akhir filter (ISO string)
+   * Fetch recent sessions dengan join ke patients
    */
   private static async fetchRecentSessions(
     startDate: string, 
     endDate: string
   ): Promise<RecentSession[]> {
     try {
+      // PERBAIKAN: Syntax select untuk join relation
+      // ms_patients (full_name, whatsapp_number) akan mengambil data dari table relasi
       const { data, error } = await supabase
-        .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any)
+        .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS)
         .select(`
           id,
           patient_id,
@@ -140,7 +150,7 @@ export class ChatbotOverviewService {
           status,
           total_messages,
           final_step_reached,
-          ms_patients:patient_id (
+          ms_patients (
             full_name,
             whatsapp_number
           )
@@ -152,17 +162,16 @@ export class ChatbotOverviewService {
 
       if (error) throw error;
 
-      // Process data
-      const rawData = (data as any) || []; 
-      
-      const sessions: RecentSession[] = rawData.map((session: any) => ({
+      // Mapping data result ke Interface
+      const sessions: RecentSession[] = (data || []).map((session: any) => ({
         id: session.id,
-        patient_name: session.ms_patients?.full_name || null,
-        whatsapp_number: session.ms_patients?.whatsapp_number || "Unknown",
+        // Handle kemungkinan relation null
+        patient_name: session.ms_patients?.full_name || "Tanpa Nama",
+        whatsapp_number: session.ms_patients?.whatsapp_number || "-",
         start_time: session.start_time,
         status: session.status,
         total_messages: session.total_messages || 0,
-        final_step_reached: session.final_step_reached,
+        final_step_reached: session.final_step_reached || "Start",
       }));
 
       return sessions;
@@ -173,9 +182,7 @@ export class ChatbotOverviewService {
   }
 
   /**
-   * Fetch session status distribution untuk chart dengan date filter
-   * @param startDate - Tanggal mulai filter (ISO string)
-   * @param endDate - Tanggal akhir filter (ISO string)
+   * Fetch session status distribution untuk chart
    */
   private static async fetchStatusDistribution(
     startDate: string,
@@ -183,25 +190,24 @@ export class ChatbotOverviewService {
   ): Promise<SessionStatusDistribution[]> {
     try {
       const { data, error } = await supabase
-        .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS as any)
+        .from(OVERVIEW_CONSTANTS.TABLE_SESSIONS)
         .select("status")
         .gte("start_time", startDate)
         .lte("start_time", endDate);
 
       if (error) throw error;
 
-      // Count by status
-      const statusCounts: Record<string, number> = {};
       const sessions = data || [];
-      
-      sessions.forEach((session: any) => {
+      const total = sessions.length;
+
+      // Group by status
+      const statusCounts: Record<string, number> = {};
+      sessions.forEach((session) => {
         const status = session.status || "UNKNOWN";
         statusCounts[status] = (statusCounts[status] || 0) + 1;
       });
-
-      const total = sessions.length;
       
-      // Convert to array with percentages
+      // Convert ke array untuk Recharts/Chart UI
       const distribution: SessionStatusDistribution[] = Object.entries(statusCounts).map(
         ([status, count]) => ({
           status,

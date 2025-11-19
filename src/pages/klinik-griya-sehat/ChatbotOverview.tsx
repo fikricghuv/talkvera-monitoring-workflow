@@ -166,28 +166,6 @@ const ChatbotOverview: React.FC = () => {
             </CardContent>
           </Card>
         </div>
-
-        {/* Quick Stats Info */}
-        <Card className="shadow-lg border-l-4 border-blue-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-green-500"></div>
-                <span>Completed: {data.kpiData.completedSessions}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
-                <span>In Progress: {data.kpiData.activeSessions}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-purple-500"></div>
-                <span>
-                  Total Messages: {data.kpiData.totalMessages.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
