@@ -17,6 +17,8 @@ import AppointmentManagement from "./pages/klinik-griya-sehat/AppointmentManagem
 import AgentOverview from "./pages/talkvera-data-agent/DataAgentOverview";
 import AgentMonitoring from "./pages/talkvera-data-agent/AgentMonitoring";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import ChatSessionManagement from "./pages/klinik-griya-sehat/ChatSessionManagement"
+import PatientManagement from "./pages/klinik-griya-sehat/PatientManagement"
 
 const queryClient = new QueryClient();
 
@@ -97,6 +99,26 @@ const App = () => (
               <ProtectedRoute>
                 <HeaderLayout>
                   <ChatbotOverview />
+                </HeaderLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/klinik-griya-sehat/data-patient"
+            element={
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <PatientManagement />
+                </HeaderLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/klinik-griya-sehat/chat-session"
+            element={
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <ChatSessionManagement />
                 </HeaderLayout>
               </ProtectedRoute>
             }

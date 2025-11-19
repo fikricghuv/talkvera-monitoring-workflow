@@ -93,9 +93,18 @@ const menuItems: MenuItemType[] = [
             url: "/projects/klinik-griya-sehat/overview",
           },
           {
-            title: "Appointment",
+            title: "Data Pasien",
+            url: "/projects/klinik-griya-sehat/data-patient",
+          },
+          {
+            title: "Chat Session",
+            url: "/projects/klinik-griya-sehat/chat-session",
+          },
+          {
+            title: "Appointment Monitoring",
             url: "/projects/klinik-griya-sehat/appointment",
           },
+          
         ],
       },
       {
