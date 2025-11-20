@@ -1,5 +1,5 @@
 // components/ragManagement/RagTable.tsx
-import { RefreshCw, FileText, ExternalLink, Trash2, Upload } from "lucide-react";
+import { RefreshCw, FileText, ExternalLink, Trash2, Upload, FileClock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,12 +15,14 @@ interface RagTableProps {
   currentPage: number;
   itemsPerPage: number;
   totalPages: number;
+  pendingCount: number;
   onRefresh: () => void;
   onRowClick: (item: RagDocument | RagUrl) => void;
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (value: string) => void;
   onDelete: (id: string) => void;
   onOpenUploadModal: (type: 'document' | 'url') => void;
+  onProcess: () => void;
 }
 
 export const RagTable = ({
@@ -30,12 +32,14 @@ export const RagTable = ({
   currentPage,
   itemsPerPage,
   totalPages,
+  pendingCount,
   onRefresh,
   onRowClick,
   onPageChange,
   onItemsPerPageChange,
   onDelete,
-  onOpenUploadModal
+  onOpenUploadModal,
+  onProcess
 }: RagTableProps) => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalCount);
@@ -84,6 +88,16 @@ export const RagTable = ({
           </p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            onClick={onProcess} 
+            variant="outline" 
+            size="sm" 
+            disabled={isLoading || !pendingCount || pendingCount === 0}
+            className="mr-2"
+          >
+            <FileClock className="h-4 w-4 mr-2" />
+            Proses Data Pending {pendingCount > 0 ? `(${pendingCount})` : ''}
+          </Button>
           <Button 
             onClick={() => onOpenUploadModal('document')}
             className="bg-blue-600 hover:bg-blue-700"

@@ -9,6 +9,7 @@ import { RagFilters } from "@/components/klinikGriyaSehat/ragManagement/RagFilte
 import { RagTable } from "@/components/klinikGriyaSehat/ragManagement/RagTable";
 import { RagUploadModal } from "@/components/klinikGriyaSehat/ragManagement/RagUploadModal";
 import { RagDetailModal } from "@/components/klinikGriyaSehat/ragManagement/RagDetailModal";
+import { RagConfirmationModal } from "@/components/klinikGriyaSehat/ragManagement/RagConfirmationModal"; // <-- Import Component Baru
 
 const RagManagement = () => {
   // Filter States
@@ -25,10 +26,15 @@ const RagManagement = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadType, setUploadType] = useState<'document' | 'url'>('document');
+  
+  // Process States
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
 
   // Debounce effect for search
   useEffect(() => {
@@ -61,6 +67,10 @@ const RagManagement = () => {
   );
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
+  
+  // Mengambil jumlah pending untuk visual UI
+  // Idealnya diambil dari metrics (total seluruh DB), jika tidak ada fallback ke items (halaman ini saja)
+  const pendingCount = items.filter(item => item.status === 'pending').length;
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
@@ -98,6 +108,52 @@ const RagManagement = () => {
     setIsUploadModalOpen(true);
   };
 
+  const handleOpenProcessModal = () => {
+    if (pendingCount === 0) {
+      toast.warning("Tidak ada data pending untuk diproses");
+      return;
+    }
+    setIsProcessModalOpen(true);
+  };
+
+  // 2. Handler saat user klik "Ya, Proses" di dalam Modal
+  const handleConfirmProcess = async () => {
+    setIsProcessing(true);
+    
+    try {
+      // Gunakan string URL langsung (tanpa process.env) agar aman dari error Vite
+      const n8nWebhookUrl = "https://n8n.server.talkvera.com/webhook-test/8bf3bbae-f388-4107-a20c-8595db0b6fbd";
+      
+      const response = await fetch(n8nWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'process_pending_documents',
+          triggeredBy: 'user_manual_action',
+          timestamp: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Webhook error: ${response.statusText}`);
+      }
+
+      toast.success(`Data akan segera diproses.`);
+      setIsProcessModalOpen(false); // Tutup modal jika sukses
+      
+      setTimeout(() => {
+        refetch();
+      }, 3000);
+      
+    } catch (error: any) {
+      console.error("Error triggering process:", error);
+      toast.error(`Gagal: ${error.message || "Terjadi kesalahan koneksi"}`);
+      // Jangan tutup modal otomatis jika error, agar user bisa coba lagi
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   if (isLoading && currentPage === 1) {
     return <RagSkeleton />;
   }
@@ -126,17 +182,19 @@ const RagManagement = () => {
 
         <RagTable
           items={items}
-          isLoading={isLoading}
+          isLoading={isLoading || isProcessing}
           totalCount={totalCount}
           currentPage={currentPage}
           itemsPerPage={itemsPerPage}
           totalPages={totalPages}
+          pendingCount={pendingCount}
           onRefresh={handleRefresh}
           onRowClick={handleRowClick}
           onPageChange={handlePageChange}
           onItemsPerPageChange={handleItemsPerPageChange}
           onDelete={handleDeleteItem}
           onOpenUploadModal={handleOpenUploadModal}
+          onProcess={handleOpenProcessModal}
         />
 
         <RagUploadModal
@@ -151,6 +209,26 @@ const RagManagement = () => {
           onClose={setIsDetailModalOpen}
           item={selectedItem}
           onUpdateItem={handleUpdateItem}
+        />
+
+        <RagConfirmationModal 
+          isOpen={isProcessModalOpen}
+          onClose={() => !isProcessing && setIsProcessModalOpen(false)}
+          onConfirm={handleConfirmProcess}
+          title="Proses Data Pending"
+          isLoading={isProcessing}
+          description={
+            <div className="space-y-2">
+              <p>Anda akan memproses data yang berstatus pending.</p>
+              <p>Proses ini akan berjalan di latar belakang dan mungkin memakan waktu beberapa saat tergantung jumlah data.</p>
+              <br/>
+              <p className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
+                Catatan: Pastikan data yang diupload sudah benar sebelum diproses.
+              </p>
+            </div>
+          }
+          confirmLabel="Ya, Proses Sekarang"
+          variant="primary"
         />
       </div>
     </div>
