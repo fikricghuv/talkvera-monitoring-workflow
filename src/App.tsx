@@ -19,6 +19,7 @@ import AgentMonitoring from "./pages/talkvera-data-agent/AgentMonitoring";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import ChatSessionManagement from "./pages/klinik-griya-sehat/ChatSessionManagement"
 import PatientManagement from "./pages/klinik-griya-sehat/PatientManagement"
+import RagManagement from "./pages/klinik-griya-sehat/RagManagement"
 
 const queryClient = new QueryClient();
 
@@ -129,6 +130,16 @@ const App = () => (
               <ProtectedRoute>
                 <HeaderLayout>
                   <AppointmentManagement />
+                </HeaderLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/klinik-griya-sehat/data-upload"
+            element={
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <RagManagement />
                 </HeaderLayout>
               </ProtectedRoute>
             }

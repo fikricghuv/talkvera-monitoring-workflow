@@ -104,6 +104,10 @@ const menuItems: MenuItemType[] = [
             title: "Appointment Monitoring",
             url: "/projects/klinik-griya-sehat/appointment",
           },
+          {
+            title: "Upload Document",
+            url: "/projects/klinik-griya-sehat/data-upload",
+          },
           
         ],
       },
