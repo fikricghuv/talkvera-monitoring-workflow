@@ -20,7 +20,7 @@ interface RagTableProps {
   onRowClick: (item: RagDocument | RagUrl) => void;
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (value: string) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, item: RagDocument | RagUrl) => void;
   onOpenUploadModal: (type: 'document' | 'url') => void;
   onProcess: () => void;
 }
@@ -208,7 +208,7 @@ export const RagTable = ({
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onDelete(item.id);
+                          onDelete(item.id, item);
                         }}
                         className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
                       >

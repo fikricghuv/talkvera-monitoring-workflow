@@ -41,7 +41,7 @@ export const useRagData = (
     try {
       const promises = [];
 
-      // Helper untuk membuat query (didefinisikan di dalam agar akses scope aman)
+      // Helper untuk membuat query
       const createQuery = (table: string) => {
         let query = supabase.from(table as any).select("*");
 
@@ -71,14 +71,14 @@ export const useRagData = (
         return query;
       };
 
-      // 1. Query Documents
+      // Query Documents
       if (!filters.typeFilter || filters.typeFilter === 'all' || filters.typeFilter === 'documents') {
         promises.push(createQuery("dt_rag_documents"));
       } else {
         promises.push(Promise.resolve({ data: [], error: null }));
       }
 
-      // 2. Query URLs
+      // Query URLs
       if (!filters.typeFilter || filters.typeFilter === 'all' || filters.typeFilter === 'urls') {
         promises.push(createQuery("dt_rag_urls"));
       } else {
@@ -97,7 +97,7 @@ export const useRagData = (
       // Merge results
       let allItems = [...docs, ...urls];
 
-      // Client-side Search Filtering (Loose Search)
+      // Client-side Search Filtering
       if (filters.debouncedSearchTerm) {
         const search = filters.debouncedSearchTerm.toLowerCase();
         allItems = allItems.filter(item => {
@@ -109,7 +109,7 @@ export const useRagData = (
         });
       }
 
-      // Client-side Sorting (Created At DESC)
+      // Client-side Sorting
       allItems.sort((a, b) => {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
@@ -130,9 +130,6 @@ export const useRagData = (
     } finally {
       setIsLoading(false);
     }
-    
-    // PERBAIKAN DISINI: 
-    // Menggunakan properti spesifik, BUKAN object 'filters' utuh
   }, [
     currentPage, 
     itemsPerPage, 
@@ -146,9 +143,8 @@ export const useRagData = (
 
   const updateItem = async (id: string, updates: Partial<RagDocument | RagUrl>) => {
     try {
-      // Cari item di state saat ini untuk menentukan jenis tabelnya
       const currentItem = items.find(i => i.id === id);
-      if (!currentItem) return; // Fail silently if not found in current view
+      if (!currentItem) return;
 
       const isDocument = 'file_name' in currentItem;
       const table = isDocument ? "dt_rag_documents" : "dt_rag_urls";
@@ -176,6 +172,55 @@ export const useRagData = (
     }
   };
 
+  // ✨ FUNGSI BARU: Trigger webhook n8n untuk hapus vector database
+  const triggerDeleteWebhook = async (id: string) => {
+    try {
+      const n8nWebhookUrl = "https://n8n.server.talkvera.com/webhook/8bccb2ce-db7f-4485-9371-67c433ded6ac";
+      
+      const response = await fetch(n8nWebhookUrl, {
+        method: 'DELETE',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id: id,
+          action: 'delete_vector',
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Webhook error: ${response.statusText}`);
+      }
+
+      console.log(`Vector database untuk ID ${id} berhasil dihapus via webhook`);
+      return true;
+    } catch (error: any) {
+      console.error("Error triggering delete webhook:", error);
+      throw error;
+    }
+  };
+
+  // ✨ FUNGSI BARU: Hapus file dari Supabase Storage
+  const deleteFileFromStorage = async (filePath: string) => {
+    try {
+      const { error } = await supabase.storage
+        .from('documents')
+        .remove([filePath]);
+
+      if (error) {
+        console.error("Error deleting file from storage:", error);
+        throw error;
+      }
+
+      console.log(`File ${filePath} berhasil dihapus dari storage`);
+      return true;
+    } catch (error: any) {
+      console.error("Error in deleteFileFromStorage:", error);
+      throw error;
+    }
+  };
+
   const deleteItem = async (id: string) => {
     try {
       const currentItem = items.find(i => i.id === id);
@@ -184,6 +229,29 @@ export const useRagData = (
       const isDocument = 'file_name' in currentItem;
       const table = isDocument ? "dt_rag_documents" : "dt_rag_urls";
 
+      // 1️⃣ Hapus dari vector database via webhook
+      toast.loading("Menghapus dari vector database...", { id: 'delete-vector' });
+      await triggerDeleteWebhook(id);
+      toast.success("Vector database berhasil dihapus", { id: 'delete-vector' });
+
+      // 2️⃣ Hapus file dari Supabase Storage (hanya untuk dokumen)
+      if (isDocument) {
+        const doc = currentItem as RagDocument;
+        if (doc.file_path) {
+          toast.loading("Menghapus file dari storage...", { id: 'delete-storage' });
+          try {
+            await deleteFileFromStorage(doc.file_path);
+            toast.success("File berhasil dihapus dari storage", { id: 'delete-storage' });
+          } catch (storageError) {
+            // Log error tapi jangan gagalkan seluruh proses
+            console.warn("Gagal menghapus file dari storage, melanjutkan proses:", storageError);
+            toast.warning("File mungkin sudah tidak ada di storage", { id: 'delete-storage' });
+          }
+        }
+      }
+
+      // 3️⃣ Hapus dari Supabase database
+      toast.loading("Menghapus dari database...", { id: 'delete-db' });
       const { error } = await supabase
         .from(table as any)
         .delete()
@@ -191,15 +259,79 @@ export const useRagData = (
 
       if (error) throw error;
 
+      // 4️⃣ Update local state
       setItems(items.filter(item => item.id !== id));
       setTotalCount(prev => prev - 1);
       
-      toast.success("Item berhasil dihapus");
+      toast.success("Item berhasil dihapus sepenuhnya", { id: 'delete-db' });
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting item:", error);
-      toast.error("Gagal menghapus item");
+      toast.error(`Gagal menghapus: ${error.message || 'Terjadi kesalahan'}`);
     }
+  };
+
+  const bulkDeleteItems = async (ids: string[]) => {
+    const results = {
+      success: [] as string[],
+      failed: [] as string[],
+    };
+
+    for (const id of ids) {
+      try {
+        const currentItem = items.find(i => i.id === id);
+        if (!currentItem) {
+          results.failed.push(id);
+          continue;
+        }
+
+        const isDocument = 'file_name' in currentItem;
+        const table = isDocument ? "dt_rag_documents" : "dt_rag_urls";
+
+        // 1. Hapus dari vector database
+        await triggerDeleteWebhook(id);
+
+        // 2. Hapus file dari storage (hanya untuk dokumen)
+        if (isDocument) {
+          const doc = currentItem as RagDocument;
+          if (doc.file_path) {
+            try {
+              await deleteFileFromStorage(doc.file_path);
+            } catch (error) {
+              console.warn(`Gagal menghapus file ${doc.file_path} dari storage`);
+            }
+          }
+        }
+
+        // 3. Hapus dari database
+        const { error } = await supabase
+          .from(table as any)
+          .delete()
+          .eq("id", id);
+
+        if (error) throw error;
+
+        results.success.push(id);
+      } catch (error) {
+        console.error(`Error deleting item ${id}:`, error);
+        results.failed.push(id);
+      }
+    }
+
+    // Update local state
+    setItems(items.filter(item => !results.success.includes(item.id)));
+    setTotalCount(prev => prev - results.success.length);
+
+    if (results.success.length > 0) {
+      toast.success(`${results.success.length} item berhasil dihapus`);
+    }
+
+    if (results.failed.length > 0) {
+      toast.error(`${results.failed.length} item gagal dihapus`);
+    }
+
+    fetchData();
+    return results;
   };
 
   const refetch = () => {
@@ -217,6 +349,7 @@ export const useRagData = (
     totalCount,
     refetch,
     updateItem,
-    deleteItem
+    deleteItem,
+    bulkDeleteItems
   };
 };

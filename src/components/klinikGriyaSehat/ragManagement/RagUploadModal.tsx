@@ -276,23 +276,6 @@ export const RagUploadModal = ({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* N8n Webhook URL (Optional) */}
-          <div className="space-y-2 bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <Label htmlFor="n8nWebhook" className="flex items-center gap-2">
-              <ExternalLink className="h-4 w-4" />
-              N8n Webhook URL (Opsional)
-            </Label>
-            <Input
-              id="n8nWebhook"
-              value={n8nWebhook}
-              onChange={(e) => setN8nWebhook(e.target.value)}
-              placeholder="https://your-n8n-instance.com/webhook/..."
-              type="url"
-            />
-            <p className="text-xs text-muted-foreground">
-              Jika diisi, akan men-trigger webhook n8n setelah upload/submit
-            </p>
-          </div>
 
           {uploadType === 'document' ? (
             <>
@@ -313,7 +296,7 @@ export const RagUploadModal = ({
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.xls"
+                    accept=".pdf"
                     onChange={handleFileSelect}
                     className="hidden"
                   />
@@ -326,7 +309,7 @@ export const RagUploadModal = ({
                       Belum ada file dipilih. Klik tombol "Pilih File" untuk upload.
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Format: PDF, DOC, DOCX, TXT, CSV, XLSX, XLS
+                      Format: PDF
                     </p>
                   </div>
                 ) : (

@@ -25,10 +25,8 @@ export const RagDetailModal = ({
 }: RagDetailModalProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
-  const [url, setUrl] = useState("");
   const [crawlFrequency, setCrawlFrequency] = useState("");
   const [metadataText, setMetadataText] = useState("");
 
@@ -36,12 +34,10 @@ export const RagDetailModal = ({
     if (item) {
       setTitle(item.title || "");
       setDescription(item.description || "");
-      setStatus(item.status || "pending");
       setTags(item.tags || []);
       setMetadataText(item.metadata ? JSON.stringify(item.metadata, null, 2) : "");
       
       if ('url' in item) {
-        setUrl(item.url || "");
         setCrawlFrequency(item.crawl_frequency || "manual");
       }
     }
@@ -51,6 +47,24 @@ export const RagDetailModal = ({
 
   const isDocument = (item: RagDocument | RagUrl): item is RagDocument => {
     return 'file_name' in item;
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusMap = {
+      pending: { color: 'bg-amber-100 text-amber-800 border-amber-300', label: 'Pending' },
+      processing: { color: 'bg-blue-100 text-blue-800 border-blue-300', label: 'Processing' },
+      completed: { color: 'bg-green-100 text-green-800 border-green-300', label: 'Completed' },
+      failed: { color: 'bg-red-100 text-red-800 border-red-300', label: 'Failed' }
+    };
+    const statusInfo = statusMap[status as keyof typeof statusMap] || { 
+      color: 'bg-gray-100 text-gray-800 border-gray-300', 
+      label: status 
+    };
+    return (
+      <Badge className={`${statusInfo.color} border px-3 py-1`}>
+        {statusInfo.label}
+      </Badge>
+    );
   };
 
   const handleSave = () => {
@@ -68,7 +82,6 @@ export const RagDetailModal = ({
     const updates: any = {
       title: title.trim() || null,
       description: description.trim() || null,
-      status: status,
       tags: tags,
       metadata: parsedMetadata
     };
@@ -140,6 +153,14 @@ export const RagDetailModal = ({
               <p className="text-xs font-mono bg-white p-2 rounded border mt-1 break-all">
                 {item.id}
               </p>
+            </div>
+
+            {/* ✨ Status dipindah ke read-only section */}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">Status</Label>
+              <div className="bg-white p-2 rounded border mt-1">
+                {getStatusBadge(item.status)}
+              </div>
             </div>
             
             {isDocument(item) ? (
@@ -217,7 +238,12 @@ export const RagDetailModal = ({
 
           {/* Editable Fields */}
           <div className="space-y-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
-            <h3 className="font-semibold text-lg">Edit Informasi</h3>
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+              ✏️ Edit Informasi
+              <span className="text-xs font-normal text-muted-foreground">
+                (Status diupdate otomatis oleh sistem)
+              </span>
+            </h3>
             
             <div className="space-y-2">
               <Label htmlFor="title">Judul</Label>
@@ -240,39 +266,22 @@ export const RagDetailModal = ({
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {!isDocument(item) && (
               <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger id="status">
+                <Label htmlFor="crawlFreq">Crawl Frequency</Label>
+                <Select value={crawlFrequency} onValueChange={setCrawlFrequency}>
+                  <SelectTrigger id="crawlFreq">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="processing">Processing</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="manual">Manual</SelectItem>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
-              {!isDocument(item) && (
-                <div className="space-y-2">
-                  <Label htmlFor="crawlFreq">Crawl Frequency</Label>
-                  <Select value={crawlFrequency} onValueChange={setCrawlFrequency}>
-                    <SelectTrigger id="crawlFreq">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="manual">Manual</SelectItem>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
+            )}
 
             <div className="space-y-2">
               <Label>Tags</Label>
@@ -294,7 +303,7 @@ export const RagDetailModal = ({
               </div>
               <div className="flex flex-wrap gap-2 mt-2">
                 {tags.map((tag, idx) => (
-                  <Badge key={idx} variant="secondary">
+                  <Badge key={idx} variant="secondary" className="cursor-pointer hover:bg-gray-300">
                     {tag}
                     <X
                       className="h-3 w-3 ml-1 cursor-pointer"

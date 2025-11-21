@@ -9,7 +9,7 @@ import { RagFilters } from "@/components/klinikGriyaSehat/ragManagement/RagFilte
 import { RagTable } from "@/components/klinikGriyaSehat/ragManagement/RagTable";
 import { RagUploadModal } from "@/components/klinikGriyaSehat/ragManagement/RagUploadModal";
 import { RagDetailModal } from "@/components/klinikGriyaSehat/ragManagement/RagDetailModal";
-import { RagConfirmationModal } from "@/components/klinikGriyaSehat/ragManagement/RagConfirmationModal"; // <-- Import Component Baru
+import { RagConfirmationModal } from "@/components/klinikGriyaSehat/ragManagement/RagConfirmationModal";
 
 const RagManagement = () => {
   // Filter States
@@ -29,12 +29,16 @@ const RagManagement = () => {
   
   // Process States
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
+
+  // ✨ Delete States (BARU)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{ id: string; item: RagDocument | RagUrl } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-
-  const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
 
   // Debounce effect for search
   useEffect(() => {
@@ -67,9 +71,6 @@ const RagManagement = () => {
   );
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
-  
-  // Mengambil jumlah pending untuk visual UI
-  // Idealnya diambil dari metrics (total seluruh DB), jika tidak ada fallback ke items (halaman ini saja)
   const pendingCount = items.filter(item => item.status === 'pending').length;
 
   const handlePageChange = (newPage: number) => {
@@ -96,10 +97,25 @@ const RagManagement = () => {
     updateItem(id, updates);
   };
 
-  const handleDeleteItem = (id: string) => {
-    if (confirm("Apakah Anda yakin ingin menghapus item ini?")) {
-      deleteItem(id);
-      toast.success("Item berhasil dihapus");
+  // ✨ Handler untuk membuka modal konfirmasi delete (BARU)
+  const handleOpenDeleteModal = (id: string, item: RagDocument | RagUrl) => {
+    setItemToDelete({ id, item });
+    setIsDeleteModalOpen(true);
+  };
+
+  // ✨ Handler untuk konfirmasi delete (BARU)
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteItem(itemToDelete.id);
+      setIsDeleteModalOpen(false);
+      setItemToDelete(null);
+    } catch (error) {
+      // Error sudah di-handle di useRagData
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -116,13 +132,11 @@ const RagManagement = () => {
     setIsProcessModalOpen(true);
   };
 
-  // 2. Handler saat user klik "Ya, Proses" di dalam Modal
   const handleConfirmProcess = async () => {
     setIsProcessing(true);
     
     try {
-      // Gunakan string URL langsung (tanpa process.env) agar aman dari error Vite
-      const n8nWebhookUrl = "https://n8n.server.talkvera.com/webhook-test/8bf3bbae-f388-4107-a20c-8595db0b6fbd";
+      const n8nWebhookUrl = "https://n8n.server.talkvera.com/webhook/8bf3bbae-f388-4107-a20c-8595db0b6fbd";
       
       const response = await fetch(n8nWebhookUrl, {
         method: 'POST',
@@ -139,7 +153,7 @@ const RagManagement = () => {
       }
 
       toast.success(`Data akan segera diproses.`);
-      setIsProcessModalOpen(false); // Tutup modal jika sukses
+      setIsProcessModalOpen(false);
       
       setTimeout(() => {
         refetch();
@@ -148,10 +162,14 @@ const RagManagement = () => {
     } catch (error: any) {
       console.error("Error triggering process:", error);
       toast.error(`Gagal: ${error.message || "Terjadi kesalahan koneksi"}`);
-      // Jangan tutup modal otomatis jika error, agar user bisa coba lagi
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Helper untuk mendapatkan nama item
+  const getItemName = (item: RagDocument | RagUrl) => {
+    return 'file_name' in item ? item.file_name : item.url;
   };
 
   if (isLoading && currentPage === 1) {
@@ -192,7 +210,7 @@ const RagManagement = () => {
           onRowClick={handleRowClick}
           onPageChange={handlePageChange}
           onItemsPerPageChange={handleItemsPerPageChange}
-          onDelete={handleDeleteItem}
+          onDelete={handleOpenDeleteModal}
           onOpenUploadModal={handleOpenUploadModal}
           onProcess={handleOpenProcessModal}
         />
@@ -211,6 +229,7 @@ const RagManagement = () => {
           onUpdateItem={handleUpdateItem}
         />
 
+        {/* Modal Konfirmasi Process */}
         <RagConfirmationModal 
           isOpen={isProcessModalOpen}
           onClose={() => !isProcessing && setIsProcessModalOpen(false)}
@@ -229,6 +248,51 @@ const RagManagement = () => {
           }
           confirmLabel="Ya, Proses Sekarang"
           variant="primary"
+        />
+
+        {/* ✨ Modal Konfirmasi Delete (BARU) */}
+        <RagConfirmationModal 
+          isOpen={isDeleteModalOpen}
+          onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
+          onConfirm={handleConfirmDelete}
+          title="Konfirmasi Hapus Data"
+          isLoading={isDeleting}
+          description={
+            <div className="space-y-3">
+              <p className="text-gray-700">
+                Anda akan menghapus item berikut:
+              </p>
+              <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                <p className="font-medium text-gray-900">
+                  {itemToDelete?.item.title}
+                </p>
+                <p className="text-sm text-gray-600 mt-1 font-mono">
+                  {itemToDelete && getItemName(itemToDelete.item)}
+                </p>
+                {itemToDelete && 'file_name' in itemToDelete.item && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    <p>📄 File: {itemToDelete.item.file_name}</p>
+                    <p>📦 Ukuran: {(itemToDelete.item.file_size / 1024).toFixed(2)} KB</p>
+                  </div>
+                )}
+              </div>
+              <div className="bg-red-50 border border-red-200 p-3 rounded-md">
+                <p className="text-sm text-red-800 font-medium">
+                  ⚠️ Perhatian:
+                </p>
+                <ul className="text-sm text-red-700 mt-1 space-y-1 list-disc list-inside">
+                  <li>Data akan dihapus dari vector database</li>
+                  {itemToDelete && 'file_name' in itemToDelete.item && (
+                    <li>File akan dihapus dari Supabase Storage</li>
+                  )}
+                  <li>Data akan dihapus dari database utama</li>
+                  <li>Tindakan ini tidak dapat dibatalkan</li>
+                </ul>
+              </div>
+            </div>
+          }
+          confirmLabel="Ya, Hapus Sekarang"
+          variant="danger"
         />
       </div>
     </div>
