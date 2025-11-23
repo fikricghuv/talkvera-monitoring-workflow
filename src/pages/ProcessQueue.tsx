@@ -100,7 +100,7 @@ const ProcessQueue = () => {
       });
 
       if (response.ok) {
-        toast.success("Perintah proses berhasil dikirim ke n8n!");
+        toast.success("Permintaan anda sedang diproses!");
         // Tunggu sebentar sebelum refresh agar n8n sempat memproses status awal jika cepat
         setTimeout(() => {
             refetch();
@@ -111,7 +111,7 @@ const ProcessQueue = () => {
       }
     } catch (error) {
       console.error("Error hitting webhook:", error);
-      toast.error("Terjadi kesalahan koneksi ke server n8n");
+      toast.error("Terjadi kesalahan koneksi ke server");
     } finally {
       setIsProcessing(false);
     }

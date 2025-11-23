@@ -5,6 +5,12 @@ import { FilterState, PaginationState, WorkflowInfo, KPIData } from "@/types/wor
 import { WORKFLOW_CONSTANTS } from "@/constants/workflowInformation";
 import { getDateRangeForFilter } from "@/utils/workflowInformationUtils";
 
+// n8n Webhook Configuration
+// FIX: Mengganti process.env (Node.js) yang menyebabkan error di browser.
+// Jika menggunakan Vite, gunakan import.meta.env.VITE_... 
+// Untuk saat ini kita gunakan fallback URL-nya langsung agar aplikasi tidak crash.
+const N8N_WEBHOOK_URL = "https://n8n.server.talkvera.com/webhook/9dd5ae64-5726-4a3f-a88a-1c6de8519fd9";
+
 /**
  * Query Builder Pattern untuk Supabase queries
  */
@@ -139,5 +145,46 @@ export class WorkflowInformationService {
     if (error) throw error;
 
     return (data || []) as WorkflowInfo[];
+  }
+
+  /**
+   * Trigger workflow processing via n8n webhook
+   * Menjalankan proses yang sebelumnya berjalan via scheduled job
+   */
+  static async triggerWorkflowProcess(): Promise<void> {
+    try {
+      // Log untuk debugging memastikan URL benar
+      console.log("Triggering Webhook to:", N8N_WEBHOOK_URL);
+
+      const response = await fetch(N8N_WEBHOOK_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          trigger: "manual",
+          timestamp: new Date().toISOString(),
+          source: "workflow-information-ui",
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      // Return response jika ada
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return await response.json();
+      }
+    } catch (error) {
+      console.error("Error triggering workflow process:", error);
+      throw new Error(
+        error instanceof Error 
+          ? `Failed to trigger workflow process: ${error.message}`
+          : "Failed to trigger workflow process: Unknown error"
+      );
+    }
   }
 }

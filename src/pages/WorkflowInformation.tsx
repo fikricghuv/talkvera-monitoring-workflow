@@ -1,7 +1,7 @@
 // pages/WorkflowInformation.tsx
 
 import React, { useState, useEffect } from "react";
-import { Download, RefreshCw } from "lucide-react";
+import { Download, RefreshCw, Play } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -46,6 +46,9 @@ const WorkflowInformation: React.FC = () => {
   // Modal States
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowInfo | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Processing State
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // ========== PREPARE DATA FOR HOOKS ==========
   
@@ -108,6 +111,30 @@ const WorkflowInformation: React.FC = () => {
   const handleRefresh = () => {
     toast.info("Memuat ulang data...");
     refetch();
+  };
+
+  /**
+   * Handle process workflow data via webhook
+   */
+  const handleProcessWorkflows = async () => {
+    setIsProcessing(true);
+    try {
+      toast.info("Memproses data workflow...");
+      
+      await WorkflowInformationService.triggerWorkflowProcess();
+      
+      toast.success("Proses berhasil dijalankan!");
+      
+      // Refresh data setelah 2 detik
+      setTimeout(() => {
+        refetch();
+      }, 2000);
+    } catch (error) {
+      console.error("Error processing workflows:", error);
+      toast.error("Terjadi kesalahan saat memproses workflow");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   /**
@@ -180,6 +207,15 @@ const WorkflowInformation: React.FC = () => {
               </p>
             </div>
             <div className="flex gap-2">
+              <Button 
+                onClick={handleProcessWorkflows}
+                variant="outline" 
+                size="sm" 
+                disabled={isProcessing || isLoading}
+              >
+                <Play className={`h-4 w-4 mr-2 ${isProcessing ? 'animate-pulse' : ''}`} />
+                {isProcessing ? 'Processing...' : 'Process'}
+              </Button>
               <Button onClick={handleRefresh} variant="outline" size="sm" disabled={isLoading}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
                 Refresh
