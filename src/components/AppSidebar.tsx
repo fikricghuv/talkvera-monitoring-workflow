@@ -125,6 +125,16 @@ const menuItems: MenuItemType[] = [
           },
         ],
       },
+      {
+        title: "Operasional Bisnis",
+        url: "/projects/oprasional-management",
+        children: [
+          {
+            title: "Overview",
+            url: "/projects/oprasional-management/overview",
+          },
+        ],
+      },
     ],
   },
 ];

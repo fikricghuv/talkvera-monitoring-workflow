@@ -20,6 +20,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import ChatSessionManagement from "./pages/klinik-griya-sehat/ChatSessionManagement"
 import PatientManagement from "./pages/klinik-griya-sehat/PatientManagement"
 import RagManagement from "./pages/klinik-griya-sehat/RagManagement"
+import OperasionalBisnisOverview from "./pages/operasional-bisnis/OperasionalBisnisOverview"
 
 const queryClient = new QueryClient();
 
@@ -160,6 +161,16 @@ const App = () => (
               <ProtectedRoute>
                 <HeaderLayout>
                   <AgentMonitoring />
+                </HeaderLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/oprasional-management/overview"
+            element={
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <OperasionalBisnisOverview />
                 </HeaderLayout>
               </ProtectedRoute>
             }
