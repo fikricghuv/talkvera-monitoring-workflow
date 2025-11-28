@@ -84,6 +84,29 @@ const menuItems: MenuItemType[] = [
     url: "/projects",
     icon: FolderKanban,
     children: [
+
+      {
+        title: "Operasional Talkvera",
+        url: "/projects/oprasional-management",
+        children: [
+          {
+            title: "Overview",
+            url: "/projects/oprasional-management/overview",
+          },
+          {
+            title: "Appointment Monitoring",
+            url: "/projects/oprasional-management/appointment-monitoring",
+          },
+          {
+            title: "Chat Agent",
+            url: "/projects/oprasional-management/chat-session",
+          },
+          {
+            title: "Knowledge Base",
+            url: "/projects/oprasional-management/knowledge-base",
+          },
+        ],
+      },
       {
         title: "Klinik Griya Sehat",
         url: "/projects/klinik-griya-sehat",
@@ -122,16 +145,6 @@ const menuItems: MenuItemType[] = [
           {
             title: "Query Monitoring",
             url: "/projects/talkvera-data-agent/query-monitoring",
-          },
-        ],
-      },
-      {
-        title: "Operasional Bisnis",
-        url: "/projects/oprasional-management",
-        children: [
-          {
-            title: "Overview",
-            url: "/projects/oprasional-management/overview",
           },
         ],
       },

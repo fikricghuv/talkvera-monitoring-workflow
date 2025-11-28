@@ -21,6 +21,9 @@ import ChatSessionManagement from "./pages/klinik-griya-sehat/ChatSessionManagem
 import PatientManagement from "./pages/klinik-griya-sehat/PatientManagement"
 import RagManagement from "./pages/klinik-griya-sehat/RagManagement"
 import OperasionalBisnisOverview from "./pages/operasional-bisnis/OperasionalBisnisOverview"
+import RagManagementTalkvera from "./pages/operasional-bisnis/RagManagementTalkvera"
+import AppointmentManagementTalkvera from "./pages/operasional-bisnis/AppointmentManagementTalkvera"
+import ChatSessionManagementTalkvera from "./pages/operasional-bisnis/ChatConversationsTalkvera"
 
 const queryClient = new QueryClient();
 
@@ -171,6 +174,36 @@ const App = () => (
               <ProtectedRoute>
                 <HeaderLayout>
                   <OperasionalBisnisOverview />
+                </HeaderLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/oprasional-management/knowledge-base"
+            element={
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <RagManagementTalkvera />
+                </HeaderLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/oprasional-management/appointment-monitoring"
+            element={
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <AppointmentManagementTalkvera />
+                </HeaderLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/oprasional-management/chat-session"
+            element={
+              <ProtectedRoute>
+                <HeaderLayout>
+                  <ChatSessionManagementTalkvera />
                 </HeaderLayout>
               </ProtectedRoute>
             }
