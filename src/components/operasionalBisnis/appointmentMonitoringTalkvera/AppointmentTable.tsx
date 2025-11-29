@@ -92,7 +92,7 @@ export const AppointmentTable = ({
               ) : appointments.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                    Tidak ada data appointment yang cocok dengan filter.
+                    Tidak ada data appointment yang ditemukan.
                   </TableCell>
                 </TableRow>
               ) : (

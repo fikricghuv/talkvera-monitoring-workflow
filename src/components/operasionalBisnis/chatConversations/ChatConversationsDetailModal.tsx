@@ -290,7 +290,7 @@ export const ChatConversationDetailModal = ({
             >
               {/* Load More Button - at top */}
               {hasMore && messages.length > 0 && (
-                <div className="flex justify-center pb-3 sticky top-0 z-10 bg-gray-50 pt-2">
+                <div className="flex justify-center pb-3 sticky top-0 z-10 pt-2">
                   <Button
                     onClick={handleLoadMore}
                     disabled={isLoadingMessages}
@@ -314,7 +314,7 @@ export const ChatConversationDetailModal = ({
               )}
 
               {!hasMore && messages.length > 0 && (
-                <div className="text-center py-2 sticky top-0 z-10 bg-gray-50">
+                <div className="text-center py-2 sticky top-0 z-10">
                   <span className="text-xs text-gray-400 bg-white px-3 py-1 rounded-full shadow-sm">
                     📨 Awal percakapan ({totalMessages} pesan total)
                   </span>

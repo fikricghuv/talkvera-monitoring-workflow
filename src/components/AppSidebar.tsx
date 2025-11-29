@@ -12,6 +12,7 @@ import {
   FolderKanban,
   ChevronDown,
   Loader2,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -43,13 +44,15 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
-
-// --- Tipe dan Data Menu ---
+import { useAuth } from '@/contexts/AuthContext';
 
 type MenuItemType = {
   title: string;
   url: string;
   icon?: LucideIcon;
+  resource?: string; // resource_key dari database
+  resources?: string[]; // untuk parent menu yang punya banyak children
+  action?: string; // default 'view'
   children?: MenuItemType[];
 };
 
@@ -58,101 +61,141 @@ const menuItems: MenuItemType[] = [
     title: "Dashboard",
     url: "/dashboard",
     icon: LayoutDashboard,
+    resource: "dashboard",
   },
   {
     title: "Workflow Information",
     url: "/workflow-information",
     icon: Network,
+    resource: "workflow_information",
   },
   {
     title: "Workflow Executions",
     url: "/workflow-execution",
     icon: Workflow,
+    resource: "workflow_executions",
   },
   {
     title: "Detail Node Execution",
     url: "/node-execution",
     icon: FileClock,
+    resource: "node_execution",
   },
   {
     title: "Process Queue",
     url: "/queue-execution",
     icon: Boxes,
+    resource: "process_queue",
+  },
+  {
+    title: "Access Management",
+    url: "/access-management",
+    icon: Shield,
+    resource: "access_management",
   },
   {
     title: "Projects",
     url: "/projects",
     icon: FolderKanban,
+    resources: [ 
+      "operasional_overview", 
+      "klinik_overview",
+      "data_agent_overview",
+    ],
     children: [
-
       {
         title: "Operasional Talkvera",
-        url: "/projects/oprasional-management",
+        url: "/projects/operasional-management",
+        resources: [ 
+          "operasional_overview",
+          "operasional_appointment",
+          "operasional_chat",
+          "operasional_kb",
+        ],
         children: [
           {
             title: "Overview",
-            url: "/projects/oprasional-management/overview",
+            url: "/projects/operasional-management/overview",
+            resource: "operasional_overview",
           },
           {
             title: "Appointment Monitoring",
-            url: "/projects/oprasional-management/appointment-monitoring",
+            url: "/projects/operasional-management/appointment-monitoring",
+            resource: "operasional_appointment",
           },
           {
             title: "Chat Agent",
-            url: "/projects/oprasional-management/chat-session",
+            url: "/projects/operasional-management/chat-session",
+            resource: "operasional_chat",
           },
           {
             title: "Knowledge Base",
-            url: "/projects/oprasional-management/knowledge-base",
+            url: "/projects/operasional-management/knowledge-base",
+            resource: "operasional_kb",
           },
         ],
       },
       {
         title: "Klinik Griya Sehat",
         url: "/projects/klinik-griya-sehat",
+        resources: [ 
+          "klinik_overview",
+          "klinik_patient",
+          "klinik_chat",
+          "klinik_appointment",
+          "klinik_rag",
+        ],
         children: [
           {
             title: "Overview",
             url: "/projects/klinik-griya-sehat/overview",
+            resource: "klinik_overview",
           },
           {
             title: "Data Pasien",
             url: "/projects/klinik-griya-sehat/data-patient",
+            resource: "klinik_patient",
           },
           {
             title: "Chat Session",
             url: "/projects/klinik-griya-sehat/chat-session",
+            resource: "klinik_chat",
           },
           {
             title: "Appointment Monitoring",
             url: "/projects/klinik-griya-sehat/appointment",
+            resource: "klinik_appointment",
           },
           {
             title: "Upload Document",
             url: "/projects/klinik-griya-sehat/data-upload",
+            resource: "klinik_rag",
           },
-          
         ],
       },
       {
         title: "Analisis Data Agent",
         url: "/projects/talkvera-data-agent",
+        resources: [
+          "data_agent_overview",
+          "data_agent_monitoring",
+        ],
         children: [
           {
             title: "Overview",
             url: "/projects/talkvera-data-agent/overview",
+            resource: "data_agent_overview",
           },
           {
             title: "Query Monitoring",
             url: "/projects/talkvera-data-agent/query-monitoring",
+            resource: "data_agent_monitoring",
           },
         ],
       },
     ],
   },
 ];
-
-// --- Komponen Helper untuk Popover ---
 
 const RenderCollapsedSubmenu = ({ item }: { item: MenuItemType }) => {
   const navigate = useNavigate();
@@ -201,9 +244,9 @@ const RenderCollapsedSubmenu = ({ item }: { item: MenuItemType }) => {
   );
 };
 
-// --- Komponen Rekursif untuk Render Menu ---
-
 const RenderMenuItem = ({ item, level = 0 }: { item: MenuItemType; level?: number }) => {
+  const { hasPermission, hasAnyPermission, loading } = useAuth();
+  
   const navigate = useNavigate();
   const location = useLocation();
   const { state } = useSidebar();
@@ -213,24 +256,45 @@ const RenderMenuItem = ({ item, level = 0 }: { item: MenuItemType; level?: numbe
   const isGroupActive = location.pathname.startsWith(item.url);
   const isItemActive = location.pathname === item.url;
 
-  // --- Render Item TANPA Children ---
+  // Logika Pengecekan Izin berdasarkan resource
+  let canRender = false;
+  const action = item.action || 'view';
+  
+  if (item.children) {
+    // Parent menu: cek apakah user punya akses ke minimal satu child
+    if (item.resources) {
+      canRender = hasAnyPermission(item.resources, action);
+    } else {
+      // Ambil semua resources dari children
+      const childResources = item.children
+        .flatMap(child => child.resource || (child.resources || []))
+        .filter(r => r);
+      canRender = hasAnyPermission(childResources, action);
+    }
+  } else if (item.resource) {
+    // Leaf menu: cek resource spesifik
+    canRender = hasPermission(item.resource, action);
+  } else {
+    // Default: public/accessible
+    canRender = true;
+  }
+  
+  if (loading || !canRender) {
+    return null;
+  }
+
+  // Item tanpa children
   if (!item.children) {
     return (
       <SidebarMenuItem
-        style={{
-          animationDelay: `${level * 50}ms`,
-        }}
-        className={`
-          transition-all
-          ${level === 0 ? 'animate-in fade-in slide-in-from-left-2 duration-300' : ''}
-        `}
+        style={{ animationDelay: `${level * 50}ms` }}
+        className={`transition-all ${level === 0 ? 'animate-in fade-in slide-in-from-left-2 duration-300' : ''}`}
       >
         <SidebarMenuButton
           asChild
           isActive={isItemActive}
           className={`
-            group relative overflow-hidden
-            transition-all duration-300 ease-in-out
+            group relative overflow-hidden transition-all duration-300 ease-in-out
             ${collapsed ? 'justify-center' : 'justify-start hover:translate-x-1'}
             hover:bg-primary/10
             ${isItemActive ? 'bg-primary/15 text-primary font-medium shadow-sm' : 'bg-white'}
@@ -256,12 +320,7 @@ const RenderMenuItem = ({ item, level = 0 }: { item: MenuItemType; level?: numbe
             )}
 
             {!collapsed && (
-              <span
-                className={`
-                  text-sm transition-all duration-300 pl-2
-                  ${isItemActive ? 'text-primary' : 'group-hover:text-primary'}
-                `}
-              >
+              <span className={`text-sm transition-all duration-300 pl-2 ${isItemActive ? 'text-primary' : 'group-hover:text-primary'}`}>
                 {item.title}
               </span>
             )}
@@ -271,17 +330,10 @@ const RenderMenuItem = ({ item, level = 0 }: { item: MenuItemType; level?: numbe
     );
   }
 
-  // --- Render Item DENGAN Children (Dropdown) ---
-
-  // Saat 'collapsed', item dropdown menjadi POPOVER
+  // Item dengan children - collapsed (popover)
   if (collapsed) {
     return (
-      <SidebarMenuItem
-        className={`
-          transition-all
-          ${level === 0 ? 'animate-in fade-in slide-in-from-left-2 duration-300' : ''}
-        `}
-      >
+      <SidebarMenuItem className={`transition-all ${level === 0 ? 'animate-in fade-in slide-in-from-left-2 duration-300' : ''}`}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
@@ -295,10 +347,7 @@ const RenderMenuItem = ({ item, level = 0 }: { item: MenuItemType; level?: numbe
               <div className="flex items-center w-full justify-center">
                 {item.icon && (
                   <item.icon
-                    className={`
-                      !h-5 !w-5 transition-all duration-300
-                      ${isGroupActive ? 'text-primary scale-110' : 'group-hover:scale-110'}
-                    `}
+                    className={`!h-5 !w-5 transition-all duration-300 ${isGroupActive ? 'text-primary scale-110' : 'group-hover:scale-110'}`}
                   />
                 )}
               </div>
@@ -306,15 +355,8 @@ const RenderMenuItem = ({ item, level = 0 }: { item: MenuItemType; level?: numbe
           </DropdownMenuTrigger>
           
           <DropdownMenuPortal>
-            <DropdownMenuContent
-              side="right"
-              align="start"
-              sideOffset={8}
-              className="w-56"
-            >
-              <div className="px-2 py-1.5 text-sm font-semibold">
-                {item.title}
-              </div>
+            <DropdownMenuContent side="right" align="start" sideOffset={8} className="w-56">
+              <div className="px-2 py-1.5 text-sm font-semibold">{item.title}</div>
               {item.children.map((child) => (
                 <RenderCollapsedSubmenu key={child.title} item={child} />
               ))}
@@ -325,27 +367,19 @@ const RenderMenuItem = ({ item, level = 0 }: { item: MenuItemType; level?: numbe
     );
   }
 
-  // SAAT EXPANDED (ACCORDION)
+  // Item dengan children - expanded (accordion)
   return (
     <SidebarMenuItem
-      style={{
-        animationDelay: `${level * 50}ms`,
-      }}
-      className={`
-        transition-all
-        ${level === 0 ? 'animate-in fade-in slide-in-from-left-2 duration-300' : ''}
-      `}
+      style={{ animationDelay: `${level * 50}ms` }}
+      className={`transition-all ${level === 0 ? 'animate-in fade-in slide-in-from-left-2 duration-300' : ''}`}
     >
       <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
         <CollapsibleTrigger asChild>
           <SidebarMenuButton
             isActive={isGroupActive}
             className={`
-              group relative overflow-hidden
-              transition-all duration-300 ease-in-out
-              justify-start hover:translate-x-1
-              hover:bg-primary/10
-              w-full 
+              group relative overflow-hidden transition-all duration-300 ease-in-out
+              justify-start hover:translate-x-1 hover:bg-primary/10 w-full 
               ${isGroupActive ? 'bg-primary/15 text-primary' : 'bg-white'}
             `}
             style={{ paddingLeft: `${level * 1.25 + 0.5}rem` }}
@@ -354,29 +388,15 @@ const RenderMenuItem = ({ item, level = 0 }: { item: MenuItemType; level?: numbe
               <div className="flex items-center">
                 {item.icon && level === 0 && (
                   <item.icon
-                    className={`
-                      !h-5 !w-5 transition-all duration-300
-                      ${isGroupActive ? 'text-primary scale-110' : 'group-hover:scale-110'}
-                      ml-2
-                    `}
+                    className={`!h-5 !w-5 transition-all duration-300 ${isGroupActive ? 'text-primary scale-110' : 'group-hover:scale-110'} ml-2`}
                   />
                 )}
-
-                <span
-                  className={`
-                    text-sm transition-all duration-300 pl-2
-                    ${isGroupActive ? 'text-primary' : 'group-hover:text-primary'}
-                  `}
-                >
+                <span className={`text-sm transition-all duration-300 pl-2 ${isGroupActive ? 'text-primary' : 'group-hover:text-primary'}`}>
                   {item.title}
                 </span>
               </div>
               <ChevronDown
-                className={`
-                  !h-4 !w-4 transition-transform duration-200 mr-2
-                  ${isOpen ? 'rotate-180' : ''} 
-                  ${isGroupActive ? 'text-primary' : 'text-neutral-500'}
-                `}
+                className={`!h-4 !w-4 transition-transform duration-200 mr-2 ${isOpen ? 'rotate-180' : ''} ${isGroupActive ? 'text-primary' : 'text-neutral-500'}`}
               />
             </div>
           </SidebarMenuButton>
@@ -394,7 +414,6 @@ const RenderMenuItem = ({ item, level = 0 }: { item: MenuItemType; level?: numbe
   );
 };
 
-// --- Komponen AppSidebar (Header & Footer) ---
 export function AppSidebar({ isMobileDrawer = false }) {
   const navigate = useNavigate();
   const { state, toggleSidebar } = useSidebar();
@@ -425,41 +444,13 @@ export function AppSidebar({ isMobileDrawer = false }) {
   };
 
   return (
-    <Sidebar
-      collapsible={isMobileDrawer ? undefined : "icon"}
-      className="flex h-full flex-col"
-    >
-      {/* Header */}
-      <div
-        className={`
-          flex h-16 items-center border-b border-border/40 bg-white backdrop-blur-sm
-          transition-all duration-300 ease-in-out
-          ${collapsed ? "justify-center px-0" : "justify-between px-6"}
-        `}
-      >
-        <div
-          className={`
-            overflow-hidden transition-all duration-300 ease-in-out
-            ${collapsed ? "w-0 opacity-0" : "w-auto opacity-100"}
-          `}
-        >
-          <img
-            src="/assets/full-logo-cyan-blue.svg"
-            alt="Talkvera Logo"
-            className="h-8 w-auto"
-          />
+    <Sidebar collapsible={isMobileDrawer ? undefined : "icon"} className="flex h-full flex-col">
+      <div className={`flex h-16 items-center border-b border-border/40 bg-white backdrop-blur-sm transition-all duration-300 ease-in-out ${collapsed ? "justify-center px-0" : "justify-between px-6"}`}>
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${collapsed ? "w-0 opacity-0" : "w-auto opacity-100"}`}>
+          <img src="/assets/full-logo-cyan-blue.svg" alt="Talkvera Logo" className="h-8 w-auto" />
         </div>
         {!isMobileDrawer && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="
-              group relative overflow-hidden
-              hover:bg-primary/10 hover:text-primary
-              transition-all duration-300 ease-in-out
-            "
-          >
+          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="group relative overflow-hidden hover:bg-primary/10 hover:text-primary transition-all duration-300 ease-in-out">
             <div className="absolute inset-0 bg-primary/5 scale-0 group-hover:scale-100 transition-transform duration-300 rounded-md" />
             {collapsed ? (
               <ChevronsRight className="!w-5 !h-5 relative z-10 transition-transform duration-300 group-hover:translate-x-0.5" />
@@ -470,91 +461,47 @@ export function AppSidebar({ isMobileDrawer = false }) {
         )}
       </div>
 
-      {/* Menu Content */}
       <SidebarContent className={`flex-1 overflow-y-auto pt-6 bg-white transition-all duration-300 ${collapsed ? 'px-0' : 'px-2'}`}>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
               {menuItems.map((item) => (
-                <RenderMenuItem 
-                  key={item.title} 
-                  item={item}
-                />
+                <RenderMenuItem key={item.title} item={item} />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Footer */}
       <div className={`mt-auto border-t border-border/40 bg-white backdrop-blur-sm transition-all duration-300 ${collapsed ? 'p-1' : 'p-2'}`}>
         <SidebarMenu className="space-y-1">
-          {/* Settings */}
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
               isActive={location.pathname.startsWith("/profile")}
-              className={`
-                group relative overflow-hidden
-                transition-all duration-300 ease-in-out
-                hover:bg-primary/10
-                ${location.pathname.startsWith("/profile") ? 'bg-primary/15 text-primary' : ''}
-                ${collapsed ? 'justify-center' : 'justify-start hover:translate-x-1'}
-              `}
+              className={`group relative overflow-hidden transition-all duration-300 ease-in-out hover:bg-primary/10 ${location.pathname.startsWith("/profile") ? 'bg-primary/15 text-primary' : ''} ${collapsed ? 'justify-center' : 'justify-start hover:translate-x-1'}`}
               disabled={isLoggingOut}
             >
               <NavLink to="/profile" className={`flex items-center w-full ${collapsed ? 'justify-center' : 'justify-start'}`}>
-                <Settings
-                  className={`
-                    !h-5 !w-5 transition-all duration-300
-                    ${collapsed ? '' : 'ml-2'}
-                    ${collapsed ? 'group-hover:rotate-90 group-hover:scale-110' : 'group-hover:rotate-90'}
-                  `}
-                />
-                {!collapsed && (
-                  <span className="text-sm pl-2 transition-all duration-300 group-hover:text-primary">
-                    Settings
-                  </span>
-                )}
+                <Settings className={`!h-5 !w-5 transition-all duration-300 ${collapsed ? '' : 'ml-2'} ${collapsed ? 'group-hover:rotate-90 group-hover:scale-110' : 'group-hover:rotate-90'}`} />
+                {!collapsed && <span className="text-sm pl-2 transition-all duration-300 group-hover:text-primary">Settings</span>}
               </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>
 
-          {/* Logout */}
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className={`
-                group relative overflow-hidden
-                transition-all duration-300 ease-in-out
-                hover:bg-red-500/10 text-red-500
-                ${collapsed ? 'justify-center' : 'justify-start hover:translate-x-1'}
-                ${isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''}
-              `}
+              className={`group relative overflow-hidden transition-all duration-300 ease-in-out hover:bg-red-500/10 text-red-500 ${collapsed ? 'justify-center' : 'justify-start hover:translate-x-1'} ${isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <div className={`flex items-center w-full ${collapsed ? 'justify-center' : 'justify-start'}`}>
                 {isLoggingOut ? (
-                  <Loader2
-                    className={`
-                      !h-5 !w-5 text-red-500 animate-spin
-                      ${collapsed ? '' : 'ml-2'}
-                    `}
-                  />
+                  <Loader2 className={`!h-5 !w-5 text-red-500 animate-spin ${collapsed ? '' : 'ml-2'}`} />
                 ) : (
-                  <LogOut
-                    className={`
-                      !h-5 !w-5 text-red-500 transition-all duration-300
-                      ${collapsed ? '' : 'ml-2'}
-                      ${collapsed ? 'group-hover:scale-110' : 'group-hover:scale-110'}
-                    `}
-                  />
+                  <LogOut className={`!h-5 !w-5 text-red-500 transition-all duration-300 ${collapsed ? '' : 'ml-2'} ${collapsed ? 'group-hover:scale-110' : 'group-hover:scale-110'}`} />
                 )}
-                {!collapsed && (
-                  <span className="text-sm pl-2 transition-all duration-300 group-hover:text-red-600">
-                    {isLoggingOut ? 'Logging out...' : 'Logout'}
-                  </span>
-                )}
+                {!collapsed && <span className="text-sm pl-2 transition-all duration-300 group-hover:text-red-600">{isLoggingOut ? 'Logging out...' : 'Logout'}</span>}
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
