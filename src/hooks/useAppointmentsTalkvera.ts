@@ -4,7 +4,8 @@ import { toast } from "sonner";
 import { 
   Appointment, 
   AppointmentMetrics, 
-  AppointmentFilterState 
+  AppointmentFilterState,
+  AppointmentFormData
 } from "@/types/appointmentsTalkvera";
 import { isAppointmentToday } from "@/utils/appointmentTalkveraUtils";
 
@@ -26,7 +27,18 @@ export const useAppointments = (
   const [uniqueStatuses, setUniqueStatuses] = useState<string[]>([]);
 
   const createBaseQuery = () => {
-    return supabase.from("dt_talkvera_appointments");
+    return supabase
+      .from("dt_crm_appointments")
+      .select(`
+        *,
+        dt_crm_contacts(
+          full_name,
+          email,
+          phone,
+          company,
+          job_title
+        )
+      `);
   };
 
   const applyCommonFilters = (query: any) => {
@@ -48,7 +60,7 @@ export const useAppointments = (
   const fetchUniqueStatuses = async () => {
     try {
       const { data } = await supabase
-        .from("dt_talkvera_appointments")
+        .from("dt_crm_appointments")
         .select("status")
         .not("status", "is", null);
 
@@ -63,8 +75,7 @@ export const useAppointments = (
 
   const fetchMetrics = async () => {
     try {
-      let query = createBaseQuery().select("*");
-
+      let query = createBaseQuery();
       query = applyCommonFilters(query);
 
       if (filters.statusFilter !== "all") {
@@ -76,7 +87,14 @@ export const useAppointments = (
       if (error) throw error;
 
       if (data) {
-        const processedData: Appointment[] = data as Appointment[];
+        const processedData = data.map(item => ({
+          ...item,
+          contact_name: item.dt_crm_contacts?.full_name,
+          contact_email: item.dt_crm_contacts?.email,
+          contact_phone: item.dt_crm_contacts?.phone,
+          contact_company: item.dt_crm_contacts?.company,
+          contact_job_title: item.dt_crm_contacts?.job_title
+        }));
 
         const totalAppointments = processedData.length;
         const scheduledAppointments = processedData.filter(
@@ -110,8 +128,7 @@ export const useAppointments = (
     setIsLoading(true);
 
     try {
-      let query = createBaseQuery().select("*");
-
+      let query = createBaseQuery();
       query = applyCommonFilters(query);
 
       if (filters.statusFilter !== "all") {
@@ -124,19 +141,30 @@ export const useAppointments = (
 
       if (error) throw error;
 
-      let allAppointments: Appointment[] = (data || []) as Appointment[];
+      let allAppointments: Appointment[] = (data || []).map(item => ({
+        ...item,
+        contact_name: item.dt_crm_contacts?.full_name,
+        contact_email: item.dt_crm_contacts?.email,
+        contact_phone: item.dt_crm_contacts?.phone,
+        contact_company: item.dt_crm_contacts?.company,
+        contact_job_title: item.dt_crm_contacts?.job_title
+      }));
 
       // Client-side filtering untuk search
       if (filters.debouncedSearchTerm && filters.debouncedSearchTerm.length >= 3) {
         const searchLower = filters.debouncedSearchTerm.toLowerCase();
         allAppointments = allAppointments.filter(a => {
-          const fullName = a.full_name?.toLowerCase() || '';
-          const email = a.email?.toLowerCase() || '';
-          const notes = a.notes?.toLowerCase() || '';
+          const contactName = a.contact_name?.toLowerCase() || '';
+          const email = a.contact_email?.toLowerCase() || '';
+          const phone = a.contact_phone?.toLowerCase() || '';
+          const company = a.contact_company?.toLowerCase() || '';
+          const reason = a.reason?.toLowerCase() || '';
           
-          return fullName.includes(searchLower) || 
+          return contactName.includes(searchLower) || 
                  email.includes(searchLower) || 
-                 notes.includes(searchLower);
+                 phone.includes(searchLower) ||
+                 company.includes(searchLower) ||
+                 reason.includes(searchLower);
         });
       }
 
@@ -160,23 +188,70 @@ export const useAppointments = (
     }
   };
 
-  const updateAppointmentStatus = async (id: string, newStatus: string) => {
+  const createAppointment = async (formData: AppointmentFormData) => {
     try {
       const { error } = await supabase
-        .from("dt_talkvera_appointments")
+        .from("dt_crm_appointments")
+        .insert({
+          ...formData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      toast.success("Appointment berhasil dibuat");
+      fetchAppointments();
+      return true;
+    } catch (error) {
+      console.error("Error creating appointment:", error);
+      toast.error("Gagal membuat appointment");
+      return false;
+    }
+  };
+
+  const updateAppointment = async (id: string, formData: Partial<AppointmentFormData>) => {
+    try {
+      const { error } = await supabase
+        .from("dt_crm_appointments")
         .update({ 
-          status: newStatus,
+          ...formData,
           updated_at: new Date().toISOString()
         })
         .eq("id", id);
 
       if (error) throw error;
 
-      toast.success("Status appointment berhasil diupdate");
+      toast.success("Appointment berhasil diupdate");
       fetchAppointments();
+      return true;
     } catch (error) {
       console.error("Error updating appointment:", error);
-      toast.error("Gagal mengupdate status appointment");
+      toast.error("Gagal mengupdate appointment");
+      return false;
+    }
+  };
+
+  const updateAppointmentStatus = async (id: string, newStatus: string) => {
+    return updateAppointment(id, { status: newStatus as any });
+  };
+
+  const deleteAppointment = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("dt_crm_appointments")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast.success("Appointment berhasil dihapus");
+      fetchAppointments();
+      return true;
+    } catch (error) {
+      console.error("Error deleting appointment:", error);
+      toast.error("Gagal menghapus appointment");
+      return false;
     }
   };
 
@@ -207,6 +282,9 @@ export const useAppointments = (
     totalCount,
     uniqueStatuses,
     refetch,
-    updateAppointmentStatus
+    createAppointment,
+    updateAppointment,
+    updateAppointmentStatus,
+    deleteAppointment
   };
 };

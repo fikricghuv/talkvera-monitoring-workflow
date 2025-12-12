@@ -56,13 +56,13 @@ export const AppointmentDetailModal = ({
         <div className="space-y-5 p-2 bg-gray-50 rounded-lg">
           {/* Customer Information */}
           <div className="border-b pb-4">
-            <h3 className="text-lg font-semibold mb-3">Informasi Customer</h3>
+            <h3 className="text-lg font-semibold mb-3">Informasi Contact</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <DetailItem 
                 title="Nama Lengkap" 
                 value={
                   <span className="font-semibold text-lg text-indigo-700">
-                    {appointment.full_name}
+                    {appointment.contact_name || 'Tidak ada nama'}
                   </span>
                 } 
               />
@@ -70,11 +70,41 @@ export const AppointmentDetailModal = ({
                 title="Email" 
                 value={
                   <span className="text-base">
-                    {appointment.email}
+                    {appointment.contact_email || '-'}
                   </span>
                 } 
               />
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <DetailItem 
+                title="Phone" 
+                value={
+                  <span className="text-base">
+                    {appointment.contact_phone || '-'}
+                  </span>
+                } 
+              />
+              <DetailItem 
+                title="Company" 
+                value={
+                  <span className="text-base">
+                    {appointment.contact_company || '-'}
+                  </span>
+                } 
+              />
+            </div>
+            {appointment.contact_job_title && (
+              <div className="mt-4">
+                <DetailItem 
+                  title="Job Title" 
+                  value={
+                    <span className="text-base font-medium">
+                      {appointment.contact_job_title}
+                    </span>
+                  } 
+                />
+              </div>
+            )}
           </div>
 
           {/* Appointment Schedule */}
@@ -112,7 +142,9 @@ export const AppointmentDetailModal = ({
                 title="Source" 
                 value={
                   <span className="bg-gray-200 px-3 py-1 rounded text-sm font-medium">
-                    {appointment.source}
+                    {appointment.source === 'landing_page' ? 'Landing Page' :
+                     appointment.source === 'whatsapp' ? 'WhatsApp' :
+                     'Manual'}
                   </span>
                 } 
               />
@@ -123,7 +155,7 @@ export const AppointmentDetailModal = ({
                 title="Catatan" 
                 value={
                   <p className="text-sm bg-blue-50 p-3 rounded border border-blue-200">
-                    {appointment.notes || 'Tidak ada catatan'}
+                    {appointment.reason || 'Tidak ada catatan'}
                   </p>
                 } 
               />
@@ -147,6 +179,24 @@ export const AppointmentDetailModal = ({
                 value={
                   <span className="text-xs font-mono bg-gray-200 p-2 rounded truncate block select-all">
                     {appointment.id}
+                  </span>
+                } 
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <DetailItem 
+                title="Client ID" 
+                value={
+                  <span className="text-xs font-mono bg-gray-200 p-2 rounded truncate block">
+                    {appointment.client_id || 'Tidak ada'}
+                  </span>
+                } 
+              />
+              <DetailItem 
+                title="Contact ID" 
+                value={
+                  <span className="text-xs font-mono bg-gray-200 p-2 rounded truncate block">
+                    {appointment.contact_id || 'Tidak ada'}
                   </span>
                 } 
               />

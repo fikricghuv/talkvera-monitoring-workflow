@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Appointment } from "@/types/appointmentsTalkvera";
 import { useAppointments } from "@/hooks/useAppointmentsTalkvera";
 import { AppointmentSkeleton } from "@/components/operasionalBisnis/appointmentMonitoringTalkvera/AppointmentSkeleton";
@@ -8,8 +10,9 @@ import { AppointmentMetrics } from "@/components/operasionalBisnis/appointmentMo
 import { AppointmentFilters } from "@/components/operasionalBisnis/appointmentMonitoringTalkvera/AppointmentFilters";
 import { AppointmentTable } from "@/components/operasionalBisnis/appointmentMonitoringTalkvera/AppointmentTable";
 import { AppointmentDetailModal } from "@/components/operasionalBisnis/appointmentMonitoringTalkvera/AppointmentDetailModal";
+import { AppointmentFormModal } from "@/components/operasionalBisnis/appointmentMonitoringTalkvera/AppointmentFormModal";
 
-const AppointmentManagementTalkvera = () => {
+const AppointmentManagementCRM = () => {
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -17,9 +20,11 @@ const AppointmentManagementTalkvera = () => {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   
-  // Modal State
+  // Modal States
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
@@ -48,7 +53,10 @@ const AppointmentManagementTalkvera = () => {
     totalCount,
     uniqueStatuses,
     refetch,
-    updateAppointmentStatus
+    createAppointment,
+    updateAppointment,
+    updateAppointmentStatus,
+    deleteAppointment
   } = useAppointments(
     { searchTerm, debouncedSearchTerm, statusFilter, startDate, endDate },
     currentPage,
@@ -74,11 +82,31 @@ const AppointmentManagementTalkvera = () => {
 
   const handleRowClick = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
-    setIsModalOpen(true);
+    setIsDetailModalOpen(true);
   };
 
-  const handleUpdateStatus = (id: string, newStatus: string) => {
-    updateAppointmentStatus(id, newStatus);
+  const handleCreateNew = () => {
+    setSelectedAppointment(null);
+    setFormMode('create');
+    setIsFormModalOpen(true);
+  };
+
+  const handleEdit = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setFormMode('edit');
+    setIsFormModalOpen(true);
+  };
+
+  const handleFormSubmit = async (formData: any) => {
+    if (formMode === 'create') {
+      return await createAppointment(formData);
+    } else {
+      return await updateAppointment(selectedAppointment!.id, formData);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteAppointment(id);
   };
 
   if (isLoading && currentPage === 1) {
@@ -88,7 +116,16 @@ const AppointmentManagementTalkvera = () => {
   return (
     <div className="space-y-6 pl-4 pr-4 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
-        <AppointmentHeader />
+        <div className="flex items-center justify-between">
+          <AppointmentHeader />
+          <Button 
+            onClick={handleCreateNew}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Buat Appointment
+          </Button>
+        </div>
 
         <AppointmentMetrics metrics={metrics} />
 
@@ -104,7 +141,6 @@ const AppointmentManagementTalkvera = () => {
           uniqueStatuses={uniqueStatuses}
         />
 
-        {/* AppointmentTable dengan Pagination di dalamnya */}
         <AppointmentTable
           appointments={appointments}
           isLoading={isLoading}
@@ -114,20 +150,30 @@ const AppointmentManagementTalkvera = () => {
           totalPages={totalPages}
           onRefresh={handleRefresh}
           onRowClick={handleRowClick}
-          onUpdateStatus={handleUpdateStatus}
+          onEdit={handleEdit}
+          onUpdateStatus={updateAppointmentStatus}
+          onDelete={handleDelete}
           onPageChange={handlePageChange}
           onItemsPerPageChange={handleItemsPerPageChange}
         />
 
         <AppointmentDetailModal
-          isOpen={isModalOpen}
-          onClose={setIsModalOpen}
+          isOpen={isDetailModalOpen}
+          onClose={setIsDetailModalOpen}
           appointment={selectedAppointment}
-          onUpdateStatus={handleUpdateStatus}
+          onUpdateStatus={updateAppointmentStatus}
+        />
+
+        <AppointmentFormModal
+          isOpen={isFormModalOpen}
+          onClose={setIsFormModalOpen}
+          appointment={selectedAppointment}
+          onSubmit={handleFormSubmit}
+          mode={formMode}
         />
       </div>
     </div>
   );
 };
 
-export default AppointmentManagementTalkvera;
+export default AppointmentManagementCRM;
