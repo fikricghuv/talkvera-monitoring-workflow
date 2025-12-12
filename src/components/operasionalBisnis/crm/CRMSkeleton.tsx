@@ -1,20 +1,25 @@
+// components/crm/CRMSkeleton.tsx
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-export const ChatConversationsSkeleton = () => {
+export const CRMSkeleton = () => {
   return (
     <div className="space-y-6 pl-4 pr-4 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header Skeleton */}
-        <div>
-          <Skeleton className="h-9 w-96 mb-2" />
-          <Skeleton className="h-4 w-[500px]" />
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-9 w-80 mb-2" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <Skeleton className="h-10 w-40" />
         </div>
 
-        {/* Metrics Cards Skeleton - 7 cards now */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4">
-          {[...Array(7)].map((_, i) => (
+        {/* Metrics Cards Skeleton - 5 cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {[...Array(5)].map((_, i) => (
             <div key={i} className="bg-white rounded-lg shadow-lg border-l-4 border-gray-300 p-6">
               <div className="flex items-center justify-between mb-4">
                 <Skeleton className="h-4 w-24" />
@@ -29,17 +34,13 @@ export const ChatConversationsSkeleton = () => {
         {/* Filter Card Skeleton */}
         <Card className="shadow-lg">
           <CardHeader>
-            <Skeleton className="h-6 w-64" />
+            <Skeleton className="h-6 w-48" />
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
-              <div className="flex items-center gap-4">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -48,8 +49,8 @@ export const ChatConversationsSkeleton = () => {
         <Card className="shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <Skeleton className="h-6 w-64 mb-2" />
-              <Skeleton className="h-4 w-80" />
+              <Skeleton className="h-6 w-56 mb-2" />
+              <Skeleton className="h-4 w-72" />
             </div>
             <Skeleton className="h-10 w-24" />
           </CardHeader>
@@ -81,18 +82,11 @@ export const ChatConversationsSkeleton = () => {
 
             {/* Pagination Skeleton */}
             <div className="flex items-center justify-between mt-4 px-2">
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-9 w-20" />
-              </div>
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-9 w-24" />
-                <Skeleton className="h-9 w-10" />
-                <Skeleton className="h-9 w-10" />
-                <Skeleton className="h-9 w-10" />
-                <Skeleton className="h-9 w-24" />
-              </div>
               <Skeleton className="h-4 w-32" />
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-9 w-24" />
+                <Skeleton className="h-9 w-24" />
+              </div>
             </div>
           </CardContent>
         </Card>

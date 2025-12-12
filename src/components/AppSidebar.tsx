@@ -110,6 +110,7 @@ const menuItems: MenuItemType[] = [
           "operasional_overview",
           "operasional_appointment",
           "operasional_chat",
+          "operasional_whatsapp",
           "operasional_kb",
         ],
         children: [
@@ -122,6 +123,11 @@ const menuItems: MenuItemType[] = [
             title: "Appointment Monitoring",
             url: "/projects/operasional-management/appointment-monitoring",
             resource: "operasional_appointment",
+          },
+          {
+            title: "CRM",
+            url: "/projects/operasional-management/crm",
+            resource: "crm",
           },
           {
             title: "Chat Agent",

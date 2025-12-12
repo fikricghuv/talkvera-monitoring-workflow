@@ -2,7 +2,7 @@
 
 export const OVERVIEW_CONSTANTS = {
   TABLE_PATIENTS: "ms_patients",
-  TABLE_SESSIONS: "dt_chat_sessions",
+  TABLE_SESSIONS: "dt_chat_sessions_old",
   TABLE_MESSAGES: "dt_chat_messages",
   TABLE_APPOINTMENTS: "dt_appointments",
   RECENT_SESSIONS_LIMIT: 10,

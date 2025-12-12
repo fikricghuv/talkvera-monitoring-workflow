@@ -8,8 +8,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ThumbsUp, ThumbsDown, ChevronUp } from "lucide-react";
-import { ChatConversation, ChatMessage } from "@/types/chatConversations";
+import { Loader2, ThumbsUp, ThumbsDown, ChevronUp, Globe, MessageCircle } from "lucide-react";
+import { ChatConversation, UnifiedMessage } from "@/types/chatConversations";
 import { formatMessageDateLong, formatMessageTime, calculateDuration } from "@/utils/chatConversationsUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -27,7 +27,7 @@ export const ChatConversationDetailModal = ({
   conversation,
   onUpdateFeedback 
 }: ChatConversationDetailModalProps) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<UnifiedMessage[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
@@ -36,21 +36,19 @@ export const ChatConversationDetailModal = ({
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const previousScrollHeight = useRef<number>(0);
   
-  const MESSAGES_PER_PAGE = 10; // Changed to 10 messages per page
+  const MESSAGES_PER_PAGE = 10;
 
   useEffect(() => {
     if (isOpen && conversation) {
-      // Reset state saat modal dibuka
       setMessages([]);
       setPage(0);
       setHasMore(true);
       setTotalMessages(0);
       loadMessages(0, true);
     }
-  }, [isOpen, conversation?.sender_id]);
+  }, [isOpen, conversation?.session_id]);
 
   useEffect(() => {
-    // Scroll ke bawah saat pertama kali load atau ada perubahan pada initial messages
     if (messages.length > 0 && page === 0) {
       scrollToBottom();
     }
@@ -73,41 +71,72 @@ export const ChatConversationDetailModal = ({
       const from = pageNum * MESSAGES_PER_PAGE;
       const to = from + MESSAGES_PER_PAGE - 1;
 
-      const { data, error, count } = await supabase
-        .from("chat_messages" as any)
-        .select("*", { count: 'exact' })
-        .eq("sender_id", conversation.sender_id)
-        .order("created_at", { ascending: false })
-        .range(from, to);
+      let allMessages: UnifiedMessage[] = [];
 
-      if (error) throw error;
+      // Fetch from appropriate table based on source
+      if (conversation.source === 'landing_page') {
+        const { data, error, count } = await supabase
+          .from("dt_lp_chat_messages")
+          .select("*", { count: 'exact' })
+          .eq("session_id", conversation.session_id)
+          .order("created_at", { ascending: false })
+          .range(from, to);
 
-      if (data) {
-        const newMessages = data as ChatMessage[];
-        
-        // Store previous scroll position
+        if (error) throw error;
+
+        if (data) {
+          allMessages = data.map(msg => ({
+            id: msg.id,
+            session_id: msg.session_id,
+            role: msg.role,
+            message: msg.message,
+            created_at: msg.created_at,
+            feedback: msg.feedback,
+            feedback_text: msg.feedback_text,
+            source: 'landing_page' as const
+          }));
+          setTotalMessages(count || 0);
+        }
+      } else if (conversation.source === 'whatsapp') {
+        const { data, error, count } = await supabase
+          .from("dt_wa_chat_messages")
+          .select("*", { count: 'exact' })
+          .eq("session_id", conversation.session_id)
+          .order("timestamp", { ascending: false })
+          .range(from, to);
+
+        if (error) throw error;
+
+        if (data) {
+          allMessages = data.map(msg => ({
+            id: msg.id,
+            session_id: msg.session_id,
+            role: msg.sender_type === 'BOT' ? 'agent' as const : 'user' as const,
+            message: msg.message_content || '',
+            created_at: msg.timestamp,
+            feedback: null,
+            feedback_text: null,
+            source: 'whatsapp' as const
+          }));
+          setTotalMessages(count || 0);
+        }
+      }
+
+      if (allMessages.length > 0) {
         if (chatContainerRef.current && !isInitial) {
           previousScrollHeight.current = chatContainerRef.current.scrollHeight;
         }
         
         if (isInitial) {
-          // Untuk load pertama, reverse untuk urutan terlama ke terbaru
-          setMessages(newMessages.reverse());
-          // Force scroll to bottom pada initial load
+          setMessages(allMessages.reverse());
           setTimeout(() => scrollToBottom(), 200);
         } else {
-          // Untuk load more (scroll ke atas), tambahkan di depan
-          setMessages(prev => [...newMessages.reverse(), ...prev]);
+          setMessages(prev => [...allMessages.reverse(), ...prev]);
         }
 
-        // Set total messages
-        setTotalMessages(count || 0);
-
-        // Check apakah masih ada data
         const totalLoaded = (pageNum + 1) * MESSAGES_PER_PAGE;
-        setHasMore(totalLoaded < (count || 0));
+        setHasMore(totalLoaded < (totalMessages || allMessages.length));
 
-        // Maintain scroll position after loading more
         if (chatContainerRef.current && !isInitial) {
           setTimeout(() => {
             if (chatContainerRef.current) {
@@ -132,7 +161,6 @@ export const ChatConversationDetailModal = ({
 
     const { scrollTop } = chatContainerRef.current;
 
-    // Jika scroll sudah di atas (scrollTop mendekati 0), load more
     if (scrollTop < 100) {
       const nextPage = page + 1;
       setPage(nextPage);
@@ -152,16 +180,15 @@ export const ChatConversationDetailModal = ({
     let newFeedback: 'like' | 'dislike' | null = null;
     
     if (currentFeedback === 'like') {
-      newFeedback = null; // Remove like
+      newFeedback = null;
     } else if (currentFeedback === 'dislike') {
-      newFeedback = null; // Remove dislike
+      newFeedback = null;
     } else {
-      newFeedback = 'like'; // Default to like when no feedback
+      newFeedback = 'like';
     }
     
     onUpdateFeedback(messageId, newFeedback);
     
-    // Update local state
     setMessages(prev => prev.map(msg => 
       msg.id === messageId ? { ...msg, feedback: newFeedback } : msg
     ));
@@ -172,20 +199,40 @@ export const ChatConversationDetailModal = ({
   const loadedMessages = messages.length;
   const remainingMessages = totalMessages - loadedMessages;
 
+  const getSourceBadge = (source: 'landing_page' | 'whatsapp') => {
+    if (source === 'landing_page') {
+      return (
+        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+          <Globe className="h-4 w-4 mr-1" />
+          Landing Page
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+        <MessageCircle className="h-4 w-4 mr-1" />
+        WhatsApp
+      </Badge>
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Detail Percakapan</DialogTitle>
+          <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+            Detail Chat Session
+            {getSourceBadge(conversation.source)}
+          </DialogTitle>
           <DialogDescription>
-            History lengkap percakapan dengan {conversation.sender_id}
+            History lengkap chat session dengan {conversation.sender_id}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-5 p-4 bg-gray-50 rounded-lg">
           {/* Summary Section */}
           <div className="bg-white p-5 rounded-lg shadow border-2 border-blue-200">
-            <h3 className="text-lg font-semibold mb-4 text-blue-700">Ringkasan Percakapan</h3>
+            <h3 className="text-lg font-semibold mb-4 text-blue-700">Ringkasan Session</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <DetailItem 
@@ -197,6 +244,13 @@ export const ChatConversationDetailModal = ({
                 } 
               />
               <DetailItem 
+                title="Source" 
+                value={getSourceBadge(conversation.source)} 
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <DetailItem 
                 title="Total Pesan" 
                 value={
                   <Badge className="text-lg px-3 py-1 bg-blue-100 text-blue-800">
@@ -204,11 +258,19 @@ export const ChatConversationDetailModal = ({
                   </Badge>
                 } 
               />
+              <DetailItem 
+                title="Status" 
+                value={
+                  <Badge className="text-base px-3 py-1 bg-purple-100 text-purple-800">
+                    {conversation.status}
+                  </Badge>
+                } 
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <DetailItem 
-                title="Waktu Pertama" 
+                title="Waktu Mulai" 
                 value={
                   <span className="font-medium text-sm">
                     {formatMessageDateLong(conversation.first_message_time)}
@@ -243,7 +305,7 @@ export const ChatConversationDetailModal = ({
 
             <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
               <DetailItem 
-                title="Pesan Agent" 
+                title="Pesan Agent/Bot" 
                 value={
                   <Badge className="bg-purple-100 text-purple-800 text-base px-3 py-1">
                     🤖 {conversation.agent_messages}
@@ -279,7 +341,6 @@ export const ChatConversationDetailModal = ({
               </div>
             </div>
 
-            {/* Chat Container with Infinite Scroll */}
             <div 
               ref={chatContainerRef}
               onScroll={handleScroll}
@@ -288,7 +349,6 @@ export const ChatConversationDetailModal = ({
                 backgroundImage: "url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%239C92AC\" fill-opacity=\"0.05\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')",
               }}
             >
-              {/* Load More Button - at top */}
               {hasMore && messages.length > 0 && (
                 <div className="flex justify-center pb-3 sticky top-0 z-10 pt-2">
                   <Button
@@ -323,7 +383,7 @@ export const ChatConversationDetailModal = ({
 
               {messages.length === 0 && !isLoadingMessages ? (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-gray-400 text-sm">Tidak ada pesan dalam percakapan ini</p>
+                  <p className="text-gray-400 text-sm">Tidak ada pesan dalam chat session ini</p>
                 </div>
               ) : (
                 messages.map((message, index) => (
@@ -349,7 +409,6 @@ export const ChatConversationDetailModal = ({
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Footer Info */}
             <div className="bg-gray-100 px-5 py-2 border-t">
               <div className="flex items-center justify-between text-xs text-gray-600">
                 <span>
@@ -374,17 +433,17 @@ export const ChatConversationDetailModal = ({
   );
 };
 
-// Chat Bubble Component
 const ChatBubble = ({ 
   message, 
   isFirstInGroup,
   onFeedbackClick
 }: { 
-  message: ChatMessage;
+  message: UnifiedMessage;
   isFirstInGroup: boolean;
   onFeedbackClick: (messageId: string, currentFeedback: string | null | undefined) => void;
 }) => {
   const isAgent = message.role === 'agent';
+  const canHaveFeedback = message.source === 'landing_page' && isAgent;
 
   return (
     <div className={`flex ${isAgent ? 'justify-start' : 'justify-end'} ${isFirstInGroup ? 'mt-4' : 'mt-1'}`}>
@@ -411,8 +470,7 @@ const ChatBubble = ({
             {message.message || '(pesan kosong)'}
           </p>
           
-          {/* Feedback Buttons - hanya untuk agent messages */}
-          {isAgent && (
+          {canHaveFeedback && (
             <div className="flex items-center gap-1 mt-2 pt-2 border-t border-gray-200">
               <button
                 onClick={(e) => {

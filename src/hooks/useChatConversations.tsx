@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { 
-  ChatMessage,
   ChatConversation,
   ChatConversationMetrics, 
-  ChatConversationFilterState 
+  ChatConversationFilterState,
+  LPChatMessage,
+  WAChatMessage,
+  UnifiedMessage
 } from "@/types/chatConversations";
 import { isMessageToday } from "@/utils/chatConversationsUtils";
 
@@ -16,50 +18,60 @@ export const useChatConversations = (
 ) => {
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [metrics, setMetrics] = useState<ChatConversationMetrics>({
-    totalConversations: 0,
+    totalSessions: 0,
     totalMessages: 0,
-    todayConversations: 0,
-    conversationsWithFeedback: 0,
-    avgMessagesPerConversation: 0
+    todaySessions: 0,
+    sessionsWithFeedback: 0,
+    avgMessagesPerSession: 0,
+    landingPageSessions: 0,
+    whatsappSessions: 0
   });
   const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
 
-  const applyCommonFilters = (query: any) => {
+  const applyDateFilters = (query: any) => {
     if (filters.startDate) {
       const startDateTime = new Date(filters.startDate);
       startDateTime.setHours(0, 0, 0, 0);
-      query = query.gte("created_at", startDateTime.toISOString());
+      query = query.gte("start_time", startDateTime.toISOString());
     }
 
     if (filters.endDate) {
       const endDateTime = new Date(filters.endDate);
       endDateTime.setHours(23, 59, 59, 999);
-      query = query.lte("created_at", endDateTime.toISOString());
+      query = query.lte("start_time", endDateTime.toISOString());
     }
 
     return query;
   };
 
   const fetchMetrics = async (allConversations: ChatConversation[]) => {
-    const totalConversations = allConversations.length;
+    const totalSessions = allConversations.length;
     const totalMessages = allConversations.reduce((sum, c) => sum + c.total_messages, 0);
-    const todayConversations = allConversations.filter(
+    const todaySessions = allConversations.filter(
       c => isMessageToday(c.last_message_time)
     ).length;
-    const conversationsWithFeedback = allConversations.filter(
+    const sessionsWithFeedback = allConversations.filter(
       c => c.messages_with_feedback > 0
     ).length;
-    const avgMessagesPerConversation = totalConversations > 0 
-      ? Math.round(totalMessages / totalConversations) 
+    const avgMessagesPerSession = totalSessions > 0 
+      ? Math.round(totalMessages / totalSessions) 
       : 0;
+    const landingPageSessions = allConversations.filter(
+      c => c.source === 'landing_page'
+    ).length;
+    const whatsappSessions = allConversations.filter(
+      c => c.source === 'whatsapp'
+    ).length;
 
     setMetrics({
-      totalConversations,
+      totalSessions,
       totalMessages,
-      todayConversations,
-      conversationsWithFeedback,
-      avgMessagesPerConversation
+      todaySessions,
+      sessionsWithFeedback,
+      avgMessagesPerSession,
+      landingPageSessions,
+      whatsappSessions
     });
   };
 
@@ -67,82 +79,170 @@ export const useChatConversations = (
     setIsLoading(true);
 
     try {
-      // Fetch all messages with filters
-      let query = supabase
-        .from("chat_messages" as any)
+      // 1. Fetch sessions dengan filter
+      let sessionQuery = supabase
+        .from("dt_chat_sessions")
         .select("*");
 
-      query = applyCommonFilters(query);
+      sessionQuery = applyDateFilters(sessionQuery);
 
-      if (filters.feedbackFilter !== "all") {
-        if (filters.feedbackFilter === "none") {
-          query = query.is("feedback", null);
-        } else {
-          query = query.eq("feedback", filters.feedbackFilter);
-        }
+      // Filter by source
+      if (filters.sourceFilter && filters.sourceFilter !== "all") {
+        sessionQuery = sessionQuery.eq("source", filters.sourceFilter);
       }
 
-      query = query.order("created_at", { ascending: false });
+      // Order awal session (optional, tapi bagus untuk mempercepat query)
+      sessionQuery = sessionQuery.order("start_time", { ascending: false });
 
-      const { data, error } = await query;
+      const { data: sessions, error: sessionError } = await sessionQuery;
 
-      if (error) throw error;
+      if (sessionError) throw sessionError;
 
-      const allMessages: ChatMessage[] = (data as ChatMessage[]) || [];
+      if (!sessions || sessions.length === 0) {
+        setConversations([]);
+        setTotalCount(0);
+        setMetrics({
+          totalSessions: 0,
+          totalMessages: 0,
+          todaySessions: 0,
+          sessionsWithFeedback: 0,
+          avgMessagesPerSession: 0,
+          landingPageSessions: 0,
+          whatsappSessions: 0
+        });
+        setIsLoading(false);
+        return;
+      }
 
-      // Group messages by sender_id
+      const sessionIds = sessions.map(s => s.id);
+
+      // 2. Fetch messages dari kedua tabel
+      const [lpMessages, waMessages] = await Promise.all([
+        supabase
+          .from("dt_lp_chat_messages")
+          .select("*")
+          .in("session_id", sessionIds)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("dt_wa_chat_messages")
+          .select("*")
+          .in("session_id", sessionIds)
+          .order("timestamp", { ascending: false })
+      ]);
+
+      if (lpMessages.error) throw lpMessages.error;
+      if (waMessages.error) throw waMessages.error;
+
+      // 3. Transform dan gabungkan messages
+      const allMessages: UnifiedMessage[] = [
+        ...(lpMessages.data || []).map((msg: LPChatMessage) => ({
+          id: msg.id,
+          session_id: msg.session_id,
+          role: msg.role,
+          message: msg.message,
+          created_at: msg.created_at,
+          feedback: msg.feedback,
+          feedback_text: msg.feedback_text,
+          source: 'landing_page' as const
+        })),
+        ...(waMessages.data || []).map((msg: WAChatMessage) => ({
+          id: msg.id,
+          session_id: msg.session_id,
+          role: msg.sender_type === 'BOT' ? 'agent' as const : 'user' as const,
+          message: msg.message_content || '',
+          created_at: msg.timestamp,
+          feedback: null,
+          feedback_text: null,
+          source: 'whatsapp' as const
+        }))
+      ];
+
+      // 4. Group messages by session dan buat conversation objects
       const conversationMap = new Map<string, ChatConversation>();
 
-      allMessages.forEach(message => {
-        const existing = conversationMap.get(message.sender_id);
-
-        if (!existing) {
-          conversationMap.set(message.sender_id, {
-            sender_id: message.sender_id,
-            total_messages: 1,
-            last_message: message.message,
-            last_message_time: message.created_at,
-            first_message_time: message.created_at,
-            agent_messages: message.role === 'agent' ? 1 : 0,
-            user_messages: message.role === 'user' ? 1 : 0,
-            messages_with_feedback: message.feedback ? 1 : 0
+      sessions.forEach(session => {
+        const sessionMessages = allMessages.filter(m => m.session_id === session.id);
+        
+        if (sessionMessages.length === 0) {
+          // Session tanpa message (gunakan data default)
+          conversationMap.set(session.id, {
+            session_id: session.id,
+            sender_id: session.sender_id,
+            source: session.source,
+            total_messages: session.total_messages,
+            last_message: '',
+            last_message_time: session.start_time, // Fallback ke start time
+            first_message_time: session.start_time,
+            agent_messages: 0,
+            user_messages: 0,
+            messages_with_feedback: 0,
+            status: session.status,
+            contact_id: session.contact_id
           });
         } else {
-          existing.total_messages += 1;
-          if (message.role === 'agent') existing.agent_messages += 1;
-          if (message.role === 'user') existing.user_messages += 1;
-          if (message.feedback) existing.messages_with_feedback += 1;
-          
-          // Update first message time (oldest)
-          if (new Date(message.created_at) < new Date(existing.first_message_time)) {
-            existing.first_message_time = message.created_at;
-          }
-          
-          // last_message and last_message_time already set from first (most recent) message
+          // Sort messages by time desc (terbaru di index 0)
+          sessionMessages.sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+
+          const agentCount = sessionMessages.filter(m => m.role === 'agent').length;
+          const userCount = sessionMessages.filter(m => m.role === 'user').length;
+          const feedbackCount = sessionMessages.filter(m => m.feedback).length;
+
+          conversationMap.set(session.id, {
+            session_id: session.id,
+            sender_id: session.sender_id,
+            source: session.source,
+            total_messages: sessionMessages.length,
+            last_message: sessionMessages[0].message,
+            last_message_time: sessionMessages[0].created_at, // Waktu pesan terakhir real
+            first_message_time: sessionMessages[sessionMessages.length - 1].created_at,
+            agent_messages: agentCount,
+            user_messages: userCount,
+            messages_with_feedback: feedbackCount,
+            status: session.status,
+            contact_id: session.contact_id
+          });
         }
       });
 
       let allConversations = Array.from(conversationMap.values());
 
-      // Sort by last message time (most recent first)
-      allConversations.sort((a, b) => 
-        new Date(b.last_message_time).getTime() - new Date(a.last_message_time).getTime()
-      );
+      // 5. Filter by feedback
+      if (filters.feedbackFilter !== "all") {
+        allConversations = allConversations.filter(conv => {
+          if (filters.feedbackFilter === "none") {
+            return conv.messages_with_feedback === 0;
+          } else {
+            const convMessages = allMessages.filter(m => 
+              m.session_id === conv.session_id && 
+              m.feedback === filters.feedbackFilter
+            );
+            return convMessages.length > 0;
+          }
+        });
+      }
 
-      // Client-side filtering untuk search
+      // 6. Client-side search filtering
       if (filters.debouncedSearchTerm && filters.debouncedSearchTerm.length >= 3) {
         const searchLower = filters.debouncedSearchTerm.toLowerCase();
         allConversations = allConversations.filter(c => {
           const senderId = c.sender_id?.toLowerCase() || '';
           const lastMessage = c.last_message?.toLowerCase() || '';
-          
           return senderId.includes(searchLower) || lastMessage.includes(searchLower);
         });
       }
 
+      // ---------------------------------------------------------
+      // 6.5. Sorting: Urutkan berdasarkan last_message_time (Terbaru di atas)
+      // ---------------------------------------------------------
+      allConversations.sort((a, b) => 
+        new Date(b.last_message_time).getTime() - new Date(a.last_message_time).getTime()
+      );
+
       const totalFiltered = allConversations.length;
       
-      // Client-side pagination
+      // 7. Client-side pagination
       const from = (currentPage - 1) * itemsPerPage;
       const to = from + itemsPerPage;
       const paginatedData = allConversations.slice(from, to);
@@ -171,6 +271,7 @@ export const useChatConversations = (
     itemsPerPage,
     filters.debouncedSearchTerm,
     filters.feedbackFilter,
+    filters.sourceFilter,
     filters.startDate,
     filters.endDate
   ]);

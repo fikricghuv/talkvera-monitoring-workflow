@@ -15,6 +15,7 @@ const ChatConversationsManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [feedbackFilter, setFeedbackFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   
@@ -39,7 +40,7 @@ const ChatConversationsManagement = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchTerm, feedbackFilter, startDate, endDate]);
+  }, [debouncedSearchTerm, feedbackFilter, sourceFilter, startDate, endDate]);
 
   // Custom hook for fetching data
   const {
@@ -53,6 +54,7 @@ const ChatConversationsManagement = () => {
       searchTerm, 
       debouncedSearchTerm, 
       feedbackFilter,
+      sourceFilter,
       startDate, 
       endDate 
     },
@@ -87,8 +89,9 @@ const ChatConversationsManagement = () => {
     feedback: 'like' | 'dislike' | null
   ) => {
     try {
+      // Update di tabel dt_lp_chat_messages (hanya LP yang punya feedback)
       const { error } = await supabase
-        .from("chat_messages" as any)
+        .from("dt_lp_chat_messages")
         .update({ feedback })
         .eq("id", id);
 
@@ -118,6 +121,8 @@ const ChatConversationsManagement = () => {
           setSearchTerm={setSearchTerm}
           feedbackFilter={feedbackFilter}
           setFeedbackFilter={setFeedbackFilter}
+          sourceFilter={sourceFilter}
+          setSourceFilter={setSourceFilter}
           startDate={startDate}
           setStartDate={setStartDate}
           endDate={endDate}

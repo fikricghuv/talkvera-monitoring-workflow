@@ -26,7 +26,7 @@ export const useChatSessions = (
   const [uniqueStatuses, setUniqueStatuses] = useState<string[]>([]);
 
   const createBaseQuery = () => {
-    return supabase.from("dt_chat_sessions" as any);
+    return supabase.from("dt_chat_sessions_old" as any);
   };
 
   const applyCommonFilters = (query: any) => {
@@ -48,7 +48,7 @@ export const useChatSessions = (
   const fetchUniqueStatuses = async () => {
     try {
       const { data } = await supabase
-        .from("dt_chat_sessions" as any)
+        .from("dt_chat_sessions_old" as any)
         .select("status")
         .not("status", "is", null);
 
@@ -64,7 +64,7 @@ export const useChatSessions = (
   const fetchMetrics = async () => {
     try {
       let query = createBaseQuery()
-        .select("*, ms_patients!dt_chat_sessions_patient_id_fkey(*)");
+        .select("*, ms_patients!dt_chat_sessions_old_patient_id_fkey(*)");
 
       query = applyCommonFilters(query);
 
@@ -117,7 +117,7 @@ export const useChatSessions = (
 
     try {
       let query = createBaseQuery()
-        .select("*, ms_patients!dt_chat_sessions_patient_id_fkey(*)");
+        .select("*, ms_patients!dt_chat_sessions_old_patient_id_fkey(*)");
 
       query = applyCommonFilters(query);
 
@@ -183,7 +183,7 @@ export const useChatSessions = (
       }
 
       const { error } = await supabase
-        .from("dt_chat_sessions" as any)
+        .from("dt_chat_sessions_old" as any)
         .update(updateData)
         .eq("id", id);
 

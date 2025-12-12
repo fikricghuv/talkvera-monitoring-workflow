@@ -1,3 +1,4 @@
+// ===== useNodeExecutions.tsx - FIXED VERSION =====
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -104,20 +105,112 @@ export const useNodeExecutions = (
     }
   };
 
+  // ✅ SOLUSI: Gunakan RPC dengan explicit parameters
   const fetchMetrics = async () => {
     try {
-      let query = supabase.from("dt_node_executions").select("*");
-      query = buildQuery(query);
+      // Prepare RPC parameters - HARUS match dengan function signature
+      const rpcParams: {
+        search_term?: string;
+        status_filter?: string;
+        start_date?: string;
+        end_date?: string;
+      } = {};
+      
+      if (filters.debouncedSearchTerm && filters.debouncedSearchTerm.length >= 3) {
+        rpcParams.search_term = filters.debouncedSearchTerm;
+      }
+      
+      if (filters.statusFilter !== "all") {
+        rpcParams.status_filter = filters.statusFilter;
+      }
+      
+      if (filters.startDate) {
+        const startDateTime = new Date(filters.startDate);
+        startDateTime.setHours(0, 0, 0, 0);
+        rpcParams.start_date = startDateTime.toISOString();
+      }
+      
+      if (filters.endDate) {
+        const endDateTime = new Date(filters.endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        rpcParams.end_date = endDateTime.toISOString();
+      }
 
-      const { data, error } = await query;
+      console.log("🔍 Calling RPC get_node_execution_metrics with:", rpcParams);
+
+      // Call RPC function - NO LIMIT, database aggregation
+      const { data, error } = await supabase
+        .rpc('get_node_execution_metrics', rpcParams);
+
+      if (error) {
+        console.error("❌ RPC Error Details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        console.log("🔄 Fallback to legacy method...");
+        toast.warning("Menggunakan kalkulasi alternatif untuk metrics");
+        await fetchMetricsLegacy();
+        return;
+      }
+
+      console.log("📊 RPC Response:", data);
+
+      if (data && data.length > 0) {
+        const result = data[0];
+        
+        console.log("✅ Metrics dari RPC (UNLIMITED DATA):", {
+          totalNodes: result.total_nodes,
+          successNodes: result.success_nodes,
+          errorNodes: result.error_nodes,
+          totalTokens: result.total_tokens
+        });
+
+        setMetrics({
+          totalNodes: Number(result.total_nodes) || 0,
+          successNodes: Number(result.success_nodes) || 0,
+          errorNodes: Number(result.error_nodes) || 0,
+          totalTokens: Number(result.total_tokens) || 0,
+          avgExecutionTime: Number(result.avg_execution_time) || 0,
+          totalPromptTokens: Number(result.total_prompt_tokens) || 0,
+          totalCompletionTokens: Number(result.total_completion_tokens) || 0,
+        });
+      } else {
+        console.warn("⚠️ RPC returned empty data");
+        await fetchMetricsLegacy();
+      }
+    } catch (error) {
+      console.error("💥 Exception in fetchMetrics:", error);
+      toast.error("Error saat fetch metrics");
+      await fetchMetricsLegacy();
+    }
+  };
+
+  // Legacy fallback method (dengan limit yang lebih besar)
+  const fetchMetricsLegacy = async () => {
+    console.log("⚠️ Using LEGACY method with LIMIT");
+    
+    try {
+      // Gunakan aggregation query sederhana tanpa fetch semua data
+      let countQuery = supabase
+        .from("dt_node_executions")
+        .select("*", { count: 'exact', head: false })
+        .limit(50000); // Increase limit significantly
+      
+      countQuery = buildQuery(countQuery);
+
+      const { data, error, count } = await countQuery;
 
       if (error) throw error;
+
+      console.log(`📊 Legacy method fetched ${data?.length || 0} rows (max 50K)`);
 
       if (data) {
         const rawData = (data as unknown) as RawNodeExecution[] | null;
         const processedData = processRawData(rawData || []);
 
-        const totalNodes = processedData.length;
+        const totalNodes = count || processedData.length;
         const errorNodes = processedData.filter(n => n.has_error).length;
         const successNodes = processedData.filter(
           n => n.execution_status === "success"
@@ -147,9 +240,14 @@ export const useNodeExecutions = (
           totalPromptTokens,
           totalCompletionTokens,
         });
+
+        if (data.length >= 50000) {
+          toast.warning("Metrics dihitung dari 50,000 data pertama (ada kemungkinan lebih banyak data)");
+        }
       }
     } catch (error) {
-      console.error("Error fetching metrics:", error);
+      console.error("Error in legacy metrics fetch:", error);
+      toast.error("Gagal memuat metrics");
     }
   };
 

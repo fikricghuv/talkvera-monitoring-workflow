@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { formatDate } from "@/utils/dateUtils"
 
 export const useDashboardData = (periodFilter, customDates) => {
   const [metrics, setMetrics] = useState(null);
@@ -43,26 +42,154 @@ export const useDashboardData = (periodFilter, customDates) => {
     const { startDate, endDate } = getDateRange();
 
     try {
+      console.log("🔍 Fetching dashboard data with RPC...", { startDate, endDate });
+
+      // Parallel fetch all RPC functions
+      const [
+        metricsResult,
+        dailyExecutionsResult,
+        topWorkflowsResult,
+        costByDayResult,
+        tokenUsageResult,
+        workflowInfoResult
+      ] = await Promise.all([
+        supabase.rpc('get_dashboard_metrics', {
+          p_start_date: startDate.toISOString(),
+          p_end_date: endDate.toISOString()
+        }),
+        supabase.rpc('get_daily_executions', {
+          p_start_date: startDate.toISOString(),
+          p_end_date: endDate.toISOString()
+        }),
+        supabase.rpc('get_top_workflows', {
+          p_start_date: startDate.toISOString(),
+          p_end_date: endDate.toISOString(),
+          p_limit: 5
+        }),
+        supabase.rpc('get_cost_by_day', {
+          p_start_date: startDate.toISOString(),
+          p_end_date: endDate.toISOString()
+        }),
+        supabase.rpc('get_token_usage_by_day', {
+          p_start_date: startDate.toISOString(),
+          p_end_date: endDate.toISOString()
+        }),
+        supabase
+          .from("dt_workflow_information")
+          .select("workflow_id, time_saved_per_execution")
+      ]);
+
+      // Check for errors
+      if (metricsResult.error) throw metricsResult.error;
+      if (dailyExecutionsResult.error) throw dailyExecutionsResult.error;
+      if (topWorkflowsResult.error) throw topWorkflowsResult.error;
+      if (costByDayResult.error) throw costByDayResult.error;
+      if (tokenUsageResult.error) throw tokenUsageResult.error;
+
+      console.log("✅ RPC Results:", {
+        metrics: metricsResult.data,
+        dailyExecutions: dailyExecutionsResult.data,
+        topWorkflows: topWorkflowsResult.data,
+        costByDay: costByDayResult.data,
+        tokenUsage: tokenUsageResult.data
+      });
+
+      // Process metrics data
+      const metricsData = metricsResult.data?.[0] || {};
+
+      // Calculate total time saved
+      let totalTimeSaved = 0;
+      if (workflowInfoResult.data) {
+        const timeSavedMap = new Map();
+        workflowInfoResult.data.forEach((info) => {
+          timeSavedMap.set(info.workflow_id, info.time_saved_per_execution || 0);
+        });
+
+        // Get successful workflows to calculate time saved
+        const { data: successfulWorkflows } = await supabase
+          .from("dt_workflow_executions")
+          .select("workflow_id")
+          .gte("created_at", startDate.toISOString())
+          .lte("created_at", endDate.toISOString())
+          .or("status.eq.success,has_errors.eq.false");
+
+        if (successfulWorkflows) {
+          successfulWorkflows.forEach(execution => {
+            const workflowId = execution.workflow_id;
+            if (workflowId && timeSavedMap.has(workflowId)) {
+              totalTimeSaved += timeSavedMap.get(workflowId) || 0;
+            }
+          });
+        }
+      }
+
+      // Format the data
+      setMetrics({
+        workflows: {
+          total: Number(metricsData.total_workflows) || 0,
+          successful: Number(metricsData.successful_workflows) || 0,
+          failed: Number(metricsData.failed_workflows) || 0,
+          running: Number(metricsData.running_workflows) || 0,
+          avgExecutionTime: Math.round(Number(metricsData.avg_execution_time) || 0),
+          totalTimeExecution: Number(metricsData.total_execution_time) || 0,
+          totalCost: Number(metricsData.total_cost) || 0,
+          totalTokens: Number(metricsData.total_tokens) || 0,
+          totalTimeSaved: totalTimeSaved,
+        },
+        trends: {
+          dailyExecutions: dailyExecutionsResult.data || [],
+          topWorkflows: (topWorkflowsResult.data || []).map(w => ({
+            name: w.name,
+            count: Number(w.count),
+            successRate: Number(w.success_rate)
+          })),
+          costByDay: (costByDayResult.data || []).map(c => ({
+            date: c.date,
+            cost: parseFloat(Number(c.cost).toFixed(4))
+          })),
+          tokenUsage: tokenUsageResult.data || [],
+        },
+      });
+
+      toast.success("Data dashboard berhasil dimuat via RPC");
+    } catch (error) {
+      console.error("❌ Error fetching dashboard data:", error);
+      toast.error("Gagal memuat data dashboard: " + error.message);
+      
+      // Fallback to legacy method if RPC fails
+      console.log("🔄 Falling back to legacy method...");
+      await fetchDashboardDataLegacy();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Legacy fallback method (same as original)
+  const fetchDashboardDataLegacy = async () => {
+    const { startDate, endDate } = getDateRange();
+
+    try {
       const { data: workflowData, error: workflowError } = await supabase
         .from("dt_workflow_executions")
         .select("*")
         .gte("created_at", startDate.toISOString())
         .lte("created_at", endDate.toISOString())
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(10000); // Add limit for safety
 
       if (workflowError) throw workflowError;
 
       const { data: workflowInfoData, error: workflowInfoError } = await supabase
-        .from("dt_workflow_information" as any)
-        .select("workflow_id, time_saved_per_execution") as any;
+        .from("dt_workflow_information")
+        .select("workflow_id, time_saved_per_execution");
 
       if (workflowInfoError) {
         console.error("Error fetching workflow info:", workflowInfoError);
       }
 
-      const timeSavedMap = new Map<string, number>();
+      const timeSavedMap = new Map();
       if (workflowInfoData && Array.isArray(workflowInfoData)) {
-        workflowInfoData.forEach((info: any) => {
+        workflowInfoData.forEach((info) => {
           timeSavedMap.set(info.workflow_id, info.time_saved_per_execution || 0);
         });
       }
@@ -76,7 +203,7 @@ export const useDashboardData = (periodFilter, customDates) => {
         const isSuccess = execution.status === "success" || !execution.has_errors;
         
         if (isSuccess) {
-          const workflowId = (execution as any).workflow_id;
+          const workflowId = execution.workflow_id;
           if (workflowId && timeSavedMap.has(workflowId)) {
             const timeSavedPerExecution = timeSavedMap.get(workflowId);
             totalTimeSaved += timeSavedPerExecution || 0;
@@ -92,9 +219,11 @@ export const useDashboardData = (periodFilter, customDates) => {
       const totalWorkflowCost = workflowData?.reduce((sum, w) => sum + (Number(w.estimated_cost_usd) || 0), 0) || 0;
       const totalWorkflowTokens = workflowData?.reduce((sum, w) => sum + (w.total_tokens || 0), 0) || 0;
 
+      // Process daily executions, top workflows, cost, and tokens
+      // (Same as original implementation)
       const dailyMap = new Map();
       workflowData?.forEach(w => {
-        const date = formatDate(new Date(w.created_at));
+        const date = new Date(w.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
         const existing = dailyMap.get(date) || { count: 0, success: 0, failed: 0 };
         dailyMap.set(date, {
           count: existing.count + 1,
@@ -105,15 +234,6 @@ export const useDashboardData = (periodFilter, customDates) => {
 
       const dailyExecutions = Array.from(dailyMap.entries())
         .map(([date, data]) => ({ date, ...data }))
-        .sort((a, b) => {
-          const [dayA, monthA] = a.date.split(' ');
-          const [dayB, monthB] = b.date.split(' ');
-          const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-          const monthIndexA = monthNames.indexOf(monthA);
-          const monthIndexB = monthNames.indexOf(monthB);
-          if (monthIndexA !== monthIndexB) return monthIndexA - monthIndexB;
-          return parseInt(dayA) - parseInt(dayB);
-        })
         .slice(-14);
 
       const workflowMap = new Map();
@@ -137,41 +257,23 @@ export const useDashboardData = (periodFilter, customDates) => {
 
       const costMap = new Map();
       workflowData?.forEach(w => {
-        const date = formatDate(new Date(w.created_at));
+        const date = new Date(w.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
         const cost = Number(w.estimated_cost_usd) || 0;
         costMap.set(date, (costMap.get(date) || 0) + cost);
       });
 
       const costByDay = Array.from(costMap.entries())
         .map(([date, cost]) => ({ date, cost: parseFloat(cost.toFixed(4)) }))
-        .sort((a, b) => {
-          const [dayA, monthA] = a.date.split(' ');
-          const [dayB, monthB] = b.date.split(' ');
-          const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-          const monthIndexA = monthNames.indexOf(monthA);
-          const monthIndexB = monthNames.indexOf(monthB);
-          if (monthIndexA !== monthIndexB) return monthIndexA - monthIndexB;
-          return parseInt(dayA) - parseInt(dayB);
-        })
         .slice(-14);
 
       const tokenMap = new Map();
       workflowData?.forEach(w => {
-        const date = formatDate(new Date(w.created_at));
+        const date = new Date(w.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
         tokenMap.set(date, (tokenMap.get(date) || 0) + (w.total_tokens || 0));
       });
 
       const tokenUsage = Array.from(tokenMap.entries())
         .map(([date, tokens]) => ({ date, tokens }))
-        .sort((a, b) => {
-          const [dayA, monthA] = a.date.split(' ');
-          const [dayB, monthB] = b.date.split(' ');
-          const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-          const monthIndexA = monthNames.indexOf(monthA);
-          const monthIndexB = monthNames.indexOf(monthB);
-          if (monthIndexA !== monthIndexB) return monthIndexA - monthIndexB;
-          return parseInt(dayA) - parseInt(dayB);
-        })
         .slice(-14);
 
       setMetrics({
@@ -184,7 +286,7 @@ export const useDashboardData = (periodFilter, customDates) => {
           totalTimeExecution: totalTimeExecution,
           totalCost: totalWorkflowCost,
           totalTokens: totalWorkflowTokens,
-          totalTimeSaved: totalTimeSaved, 
+          totalTimeSaved: totalTimeSaved,
         },
         trends: {
           dailyExecutions,
@@ -194,12 +296,10 @@ export const useDashboardData = (periodFilter, customDates) => {
         },
       });
 
-      toast.success("Data dashboard berhasil dimuat");
+      toast.warning("Menggunakan method legacy (max 10K data)");
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      console.error("Error in legacy fetch:", error);
       toast.error("Gagal memuat data dashboard");
-    } finally {
-      setIsLoading(false);
     }
   };
 

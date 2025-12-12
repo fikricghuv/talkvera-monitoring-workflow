@@ -24,6 +24,7 @@ import RagManagementTalkvera from "./pages/operasional-bisnis/RagManagementTalkv
 import AppointmentManagementTalkvera from "./pages/operasional-bisnis/AppointmentManagementTalkvera";
 import ChatSessionManagementTalkvera from "./pages/operasional-bisnis/ChatConversationsTalkvera";
 import RoleManagement from "./pages/RoleManagement";
+import CRMManagement from "./pages/operasional-bisnis/CRMManagementTalkvera";
 import { PermissionRoute } from "./components/PermissionRoute";
 import { AuthProvider } from "./contexts/AuthContext";
 
@@ -217,6 +218,16 @@ const App = () => (
                 <PermissionRoute requiredResource="operasional_appointment">
                   <HeaderLayout>
                     <AppointmentManagementTalkvera />
+                  </HeaderLayout>
+                </PermissionRoute>
+              }
+            />
+            <Route
+              path="/projects/operasional-management/crm"
+              element={
+                <PermissionRoute requiredResource="operasional_appointment">
+                  <HeaderLayout>
+                    <CRMManagement />
                   </HeaderLayout>
                 </PermissionRoute>
               }
