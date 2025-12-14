@@ -9,8 +9,7 @@ import { getDateRangeForFilter } from "@/utils/workflowInformationUtils";
 // FIX: Mengganti process.env (Node.js) yang menyebabkan error di browser.
 // Jika menggunakan Vite, gunakan import.meta.env.VITE_... 
 // Untuk saat ini kita gunakan fallback URL-nya langsung agar aplikasi tidak crash.
-const N8N_WEBHOOK_URL = "https://n8n.server.talkvera.com/webhook/9dd5ae64-5726-4a3f-a88a-1c6de8519fd9";
-
+const n8nUrl = import.meta.env.VITE_N8N_WEBHOOK_URL;
 /**
  * Query Builder Pattern untuk Supabase queries
  */
@@ -153,10 +152,8 @@ export class WorkflowInformationService {
    */
   static async triggerWorkflowProcess(): Promise<void> {
     try {
-      // Log untuk debugging memastikan URL benar
-      console.log("Triggering Webhook to:", N8N_WEBHOOK_URL);
 
-      const response = await fetch(N8N_WEBHOOK_URL, {
+      const response = await fetch(n8nUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -13,7 +13,7 @@ export const ChatConversationsSkeleton = () => {
         </div>
 
         {/* Metrics Cards Skeleton - 7 cards now */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(7)].map((_, i) => (
             <div key={i} className="bg-white rounded-lg shadow-lg border-l-4 border-gray-300 p-6">
               <div className="flex items-center justify-between mb-4">

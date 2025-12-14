@@ -5,18 +5,22 @@ import { toast } from 'sonner';
 import type {
   OperasionalBisnisOverviewKPI,
   OperasionalBisnisTimeSeriesData,
-  ToolCategoryDistribution,
-  ToolOperationDistribution,
-  TopTool,
-  TopUser,
+  ContactSourceDistribution,
+  ContactLifecycleDistribution,
+  LeadStatusDistribution,
+  SessionStatusDistribution,
+  AppointmentStatusDistribution,
+  TopContact,
+  SessionWithContact,
+  AppointmentWithContact,
   OperasionalBisnisOverviewFilters,
+  ConversionFunnel,
 } from '@/types/operasionalBisnisToolUsage';
 import { fetchOperasionalBisnisOverviewData } from '@/services/operasionalBisnisToolUsageService';
 import {
-  calculateSuccessRate,
   groupByDate,
   formatDate,
-  getUniqueValues,
+  calculateSessionDuration,
 } from '@/utils/operasionalBisnisToolUsageUtils';
 import { MESSAGES } from '@/constants/operasionalBisnisToolUsage';
 
@@ -25,69 +29,155 @@ import { MESSAGES } from '@/constants/operasionalBisnisToolUsage';
  */
 export const useOperasionalBisnisOverview = (filters: OperasionalBisnisOverviewFilters) => {
   const [kpiData, setKpiData] = useState<OperasionalBisnisOverviewKPI>({
-    totalExecutions: 0,
-    successfulExecutions: 0,
-    failedExecutions: 0,
-    totalUsers: 0,
-    totalTransactions: 0,
-    totalContentOps: 0,
-    totalCRMOps: 0,
-    uniqueTools: 0,
+    totalContacts: 0,
+    newContacts: 0,
+    leadsCount: 0,
+    qualifiedLeadsCount: 0,
+    customersCount: 0,
+    inactiveCount: 0,
+    totalSessions: 0,
+    landingPageSessions: 0,
+    whatsappSessions: 0,
+    completedSessions: 0,
+    inProgressSessions: 0,
+    avgMessagesPerSession: 0,
+    totalAppointments: 0,
+    scheduledAppointments: 0,
+    completedAppointments: 0,
+    canceledAppointments: 0,
+    lpToContactRate: 0,
+    waToContactRate: 0,
+    contactToAppointmentRate: 0,
   });
 
   const [timeSeriesData, setTimeSeriesData] = useState<OperasionalBisnisTimeSeriesData[]>([]);
-  const [categoryDistribution, setCategoryDistribution] = useState<ToolCategoryDistribution[]>([]);
-  const [operationDistribution, setOperationDistribution] = useState<ToolOperationDistribution[]>([]);
-  const [topTools, setTopTools] = useState<TopTool[]>([]);
-  const [topUsers, setTopUsers] = useState<TopUser[]>([]);
+  const [sourceDistribution, setSourceDistribution] = useState<ContactSourceDistribution[]>([]);
+  const [lifecycleDistribution, setLifecycleDistribution] = useState<ContactLifecycleDistribution[]>([]);
+  const [leadStatusDistribution, setLeadStatusDistribution] = useState<LeadStatusDistribution[]>([]);
+  const [sessionStatusDistribution, setSessionStatusDistribution] = useState<SessionStatusDistribution[]>([]);
+  const [appointmentStatusDistribution, setAppointmentStatusDistribution] = useState<AppointmentStatusDistribution[]>([]);
+  const [conversionFunnels, setConversionFunnels] = useState<ConversionFunnel[]>([]);
+  const [topContacts, setTopContacts] = useState<TopContact[]>([]);
+  const [recentSessions, setRecentSessions] = useState<SessionWithContact[]>([]);
+  const [upcomingAppointments, setUpcomingAppointments] = useState<AppointmentWithContact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { startDate, endDate, userFilter, categoryFilter } = filters;
+  const { startDate, endDate, sourceFilter, lifecycleFilter, leadStatusFilter } = filters;
 
   /**
    * Calculate KPI data
    */
   const calculateKPI = useCallback((data: any) => {
-    const { toolUsage } = data;
+    const { contacts, sessions, appointments } = data;
 
-    const successfulExecutions = toolUsage.filter((t: any) => t.success).length;
-    const failedExecutions = toolUsage.filter((t: any) => !t.success).length;
-    const uniqueUsers = getUniqueValues(toolUsage, 'user_id').size;
-    const uniqueTools = getUniqueValues(toolUsage, 'tool_name').size;
+    // Contact metrics
+    const totalContacts = contacts.length;
+    const newContacts = contacts.filter((c: any) => {
+      const createdDate = new Date(c.created_at);
+      const filterStartDate = new Date(startDate);
+      return createdDate >= filterStartDate;
+    }).length;
+    
+    const leadsCount = contacts.filter((c: any) => c.lifecycle_stage === 'lead').length;
+    const qualifiedLeadsCount = contacts.filter((c: any) => c.lifecycle_stage === 'qualified').length;
+    const customersCount = contacts.filter((c: any) => c.lifecycle_stage === 'customer').length;
+    const inactiveCount = contacts.filter((c: any) => c.lifecycle_stage === 'inactive').length;
 
-    const totalTransactions = toolUsage.filter((t: any) => t.tool_category === 'transactions').length;
-    const totalContentOps = toolUsage.filter((t: any) => t.tool_category === 'content').length;
-    const totalCRMOps = toolUsage.filter((t: any) => t.tool_category === 'crm').length;
+    // Session metrics
+    const totalSessions = sessions.length;
+    const landingPageSessions = sessions.filter((s: any) => s.source === 'landing_page').length;
+    const whatsappSessions = sessions.filter((s: any) => s.source === 'whatsapp').length;
+    const completedSessions = sessions.filter((s: any) => s.status === 'COMPLETED').length;
+    const inProgressSessions = sessions.filter((s: any) => s.status === 'IN_PROGRESS').length;
+    
+    const totalMessages = sessions.reduce((sum: number, s: any) => sum + (s.total_messages || 0), 0);
+    const avgMessagesPerSession = totalSessions > 0 ? totalMessages / totalSessions : 0;
+
+    // Appointment metrics
+    const totalAppointments = appointments.length;
+    const scheduledAppointments = appointments.filter((a: any) => a.status === 'scheduled').length;
+    const completedAppointments = appointments.filter((a: any) => a.status === 'completed').length;
+    const canceledAppointments = appointments.filter((a: any) => a.status === 'canceled').length;
+
+    // Conversion rates
+    const sessionsWithContact = sessions.filter((s: any) => s.contact_id).length;
+    const lpToContactRate = landingPageSessions > 0 
+      ? (sessionsWithContact / totalSessions) * 100 
+      : 0;
+    
+    const waToContactRate = whatsappSessions > 0 
+      ? (sessionsWithContact / totalSessions) * 100 
+      : 0;
+    
+    const contactToAppointmentRate = totalContacts > 0 
+      ? (totalAppointments / totalContacts) * 100 
+      : 0;
 
     return {
-      totalExecutions: toolUsage.length,
-      successfulExecutions,
-      failedExecutions,
-      totalUsers: uniqueUsers,
-      totalTransactions,
-      totalContentOps,
-      totalCRMOps,
-      uniqueTools,
+      totalContacts,
+      newContacts,
+      leadsCount,
+      qualifiedLeadsCount,
+      customersCount,
+      inactiveCount,
+      totalSessions,
+      landingPageSessions,
+      whatsappSessions,
+      completedSessions,
+      inProgressSessions,
+      avgMessagesPerSession,
+      totalAppointments,
+      scheduledAppointments,
+      completedAppointments,
+      canceledAppointments,
+      lpToContactRate,
+      waToContactRate,
+      contactToAppointmentRate,
     };
-  }, []);
+  }, [startDate]);
 
   /**
    * Calculate time series data
    */
-  const calculateTimeSeries = useCallback((toolUsage: any[], dateRange: { start: string; end: string }) => {
-    const grouped = groupByDate(toolUsage, dateRange);
+  const calculateTimeSeries = useCallback((data: any, dateRange: { start: string; end: string }) => {
+    const { contacts, sessions, appointments } = data;
+    const grouped = groupByDate(contacts, dateRange);
     
     const seriesData: OperasionalBisnisTimeSeriesData[] = [];
     
-    grouped.forEach((items, date) => {
-      const successful = items.filter(t => t.success).length;
-      const failed = items.filter(t => !t.success).length;
+    grouped.forEach((_, date) => {
+      const contactsOnDate = contacts.filter((c: any) => {
+        const contactDate = new Date(c.created_at).toISOString().split('T')[0];
+        return contactDate === date;
+      }).length;
+
+      const sessionsOnDate = sessions.filter((s: any) => {
+        const sessionDate = new Date(s.start_time).toISOString().split('T')[0];
+        return sessionDate === date;
+      }).length;
+
+      const appointmentsOnDate = appointments.filter((a: any) => {
+        const appointmentDate = new Date(a.created_at).toISOString().split('T')[0];
+        return appointmentDate === date;
+      }).length;
+
+      const lpSessionsOnDate = sessions.filter((s: any) => {
+        const sessionDate = new Date(s.start_time).toISOString().split('T')[0];
+        return sessionDate === date && s.source === 'landing_page';
+      }).length;
+
+      const waSessionsOnDate = sessions.filter((s: any) => {
+        const sessionDate = new Date(s.start_time).toISOString().split('T')[0];
+        return sessionDate === date && s.source === 'whatsapp';
+      }).length;
 
       seriesData.push({
         date: formatDate(date, "dd MMM"),
-        executions: items.length,
-        successful,
-        failed,
+        contacts: contactsOnDate,
+        sessions: sessionsOnDate,
+        appointments: appointmentsOnDate,
+        lpSessions: lpSessionsOnDate,
+        waSessions: waSessionsOnDate,
       });
     });
 
@@ -95,98 +185,200 @@ export const useOperasionalBisnisOverview = (filters: OperasionalBisnisOverviewF
   }, []);
 
   /**
-   * Calculate category distribution
+   * Calculate source distribution
    */
-  const calculateCategoryDistribution = useCallback((toolUsage: any[]) => {
-    const transactions = toolUsage.filter(t => t.tool_category === 'transactions').length;
-    const content = toolUsage.filter(t => t.tool_category === 'content').length;
-    const crm = toolUsage.filter(t => t.tool_category === 'crm').length;
-    const other = toolUsage.filter(t => !t.tool_category || !['transactions', 'content', 'crm'].includes(t.tool_category)).length;
+  const calculateSourceDistribution = useCallback((contacts: any[]) => {
+    const landingPage = contacts.filter(c => c.first_source === 'landing_page').length;
+    const whatsapp = contacts.filter(c => c.first_source === 'whatsapp').length;
+    const manual = contacts.filter(c => c.first_source === 'manual').length;
 
-    const total = toolUsage.length || 1;
+    const total = contacts.length || 1;
 
     return [
-      { category: 'Transactions', count: transactions, percentage: (transactions / total) * 100 },
-      { category: 'Content', count: content, percentage: (content / total) * 100 },
-      { category: 'CRM', count: crm, percentage: (crm / total) * 100 },
-      { category: 'Other', count: other, percentage: (other / total) * 100 },
+      { source: 'Landing Page', count: landingPage, percentage: (landingPage / total) * 100 },
+      { source: 'WhatsApp', count: whatsapp, percentage: (whatsapp / total) * 100 },
+      { source: 'Manual', count: manual, percentage: (manual / total) * 100 },
     ].filter(item => item.count > 0);
   }, []);
 
   /**
-   * Calculate operation distribution
+   * Calculate lifecycle distribution
    */
-  const calculateOperationDistribution = useCallback((toolUsage: any[]) => {
-    const create = toolUsage.filter(t => t.tool_operation === 'create').length;
-    const read = toolUsage.filter(t => t.tool_operation === 'read').length;
-    const update = toolUsage.filter(t => t.tool_operation === 'update').length;
-    const deleteOp = toolUsage.filter(t => t.tool_operation === 'delete').length;
-    const other = toolUsage.filter(t => !t.tool_operation || !['create', 'read', 'update', 'delete'].includes(t.tool_operation)).length;
+  const calculateLifecycleDistribution = useCallback((contacts: any[]) => {
+    const lead = contacts.filter(c => c.lifecycle_stage === 'lead').length;
+    const qualified = contacts.filter(c => c.lifecycle_stage === 'qualified').length;
+    const customer = contacts.filter(c => c.lifecycle_stage === 'customer').length;
+    const inactive = contacts.filter(c => c.lifecycle_stage === 'inactive').length;
 
-    const total = toolUsage.length || 1;
+    const total = contacts.length || 1;
 
     return [
-      { operation: 'Create', count: create, percentage: (create / total) * 100 },
-      { operation: 'Read', count: read, percentage: (read / total) * 100 },
-      { operation: 'Update', count: update, percentage: (update / total) * 100 },
-      { operation: 'Delete', count: deleteOp, percentage: (deleteOp / total) * 100 },
-      { operation: 'Other', count: other, percentage: (other / total) * 100 },
+      { lifecycle_stage: 'Lead', count: lead, percentage: (lead / total) * 100 },
+      { lifecycle_stage: 'Qualified', count: qualified, percentage: (qualified / total) * 100 },
+      { lifecycle_stage: 'Customer', count: customer, percentage: (customer / total) * 100 },
+      { lifecycle_stage: 'Inactive', count: inactive, percentage: (inactive / total) * 100 },
     ].filter(item => item.count > 0);
   }, []);
 
   /**
-   * Calculate top tools
+   * Calculate lead status distribution
    */
-  const calculateTopTools = useCallback((toolUsage: any[]) => {
-    const toolMap = new Map<string, { total: number; successful: number }>();
+  const calculateLeadStatusDistribution = useCallback((contacts: any[]) => {
+    const newStatus = contacts.filter(c => c.lead_status === 'new').length;
+    const inProgress = contacts.filter(c => c.lead_status === 'in_progress').length;
+    const followUp = contacts.filter(c => c.lead_status === 'follow_up').length;
+    const closedWon = contacts.filter(c => c.lead_status === 'closed_won').length;
+    const closedLost = contacts.filter(c => c.lead_status === 'closed_lost').length;
 
-    toolUsage.forEach(usage => {
-      if (!toolMap.has(usage.tool_name)) {
-        toolMap.set(usage.tool_name, { total: 0, successful: 0 });
-      }
-      const tool = toolMap.get(usage.tool_name)!;
-      tool.total++;
-      if (usage.success) tool.successful++;
-    });
+    const total = contacts.length || 1;
 
-    const tools: TopTool[] = [];
-    toolMap.forEach((stats, toolName) => {
-      tools.push({
-        tool_name: toolName,
-        usage_count: stats.total,
-        success_rate: calculateSuccessRate(stats.successful, stats.total),
-      });
-    });
-
-    return tools.sort((a, b) => b.usage_count - a.usage_count).slice(0, 10);
+    return [
+      { lead_status: 'New', count: newStatus, percentage: (newStatus / total) * 100 },
+      { lead_status: 'In Progress', count: inProgress, percentage: (inProgress / total) * 100 },
+      { lead_status: 'Follow Up', count: followUp, percentage: (followUp / total) * 100 },
+      { lead_status: 'Closed Won', count: closedWon, percentage: (closedWon / total) * 100 },
+      { lead_status: 'Closed Lost', count: closedLost, percentage: (closedLost / total) * 100 },
+    ].filter(item => item.count > 0);
   }, []);
 
   /**
-   * Calculate top users
+   * Calculate session status distribution
    */
-  const calculateTopUsers = useCallback((toolUsage: any[]) => {
-    const userMap = new Map<string, { name: string | null; total: number; successful: number }>();
+  const calculateSessionStatusDistribution = useCallback((sessions: any[]) => {
+    const inProgress = sessions.filter(s => s.status === 'IN_PROGRESS').length;
+    const completed = sessions.filter(s => s.status === 'COMPLETED').length;
+    const abandoned = sessions.filter(s => s.status === 'ABANDONED').length;
 
-    toolUsage.forEach(usage => {
-      if (!userMap.has(usage.user_id)) {
-        userMap.set(usage.user_id, { name: usage.user_name, total: 0, successful: 0 });
-      }
-      const user = userMap.get(usage.user_id)!;
-      user.total++;
-      if (usage.success) user.successful++;
-    });
+    const total = sessions.length || 1;
 
-    const users: TopUser[] = [];
-    userMap.forEach((stats, userId) => {
-      users.push({
-        user_id: userId,
-        user_name: stats.name,
-        execution_count: stats.total,
-        success_rate: calculateSuccessRate(stats.successful, stats.total),
+    return [
+      { status: 'In Progress', count: inProgress, percentage: (inProgress / total) * 100 },
+      { status: 'Completed', count: completed, percentage: (completed / total) * 100 },
+      { status: 'Abandoned', count: abandoned, percentage: (abandoned / total) * 100 },
+    ].filter(item => item.count > 0);
+  }, []);
+
+  /**
+   * Calculate appointment status distribution
+   */
+  const calculateAppointmentStatusDistribution = useCallback((appointments: any[]) => {
+    const scheduled = appointments.filter(a => a.status === 'scheduled').length;
+    const completed = appointments.filter(a => a.status === 'completed').length;
+    const canceled = appointments.filter(a => a.status === 'canceled').length;
+    const rescheduled = appointments.filter(a => a.status === 'rescheduled').length;
+
+    const total = appointments.length || 1;
+
+    return [
+      { status: 'Scheduled', count: scheduled, percentage: (scheduled / total) * 100 },
+      { status: 'Completed', count: completed, percentage: (completed / total) * 100 },
+      { status: 'Canceled', count: canceled, percentage: (canceled / total) * 100 },
+      { status: 'Rescheduled', count: rescheduled, percentage: (rescheduled / total) * 100 },
+    ].filter(item => item.count > 0);
+  }, []);
+
+  /**
+   * Calculate conversion funnels
+   */
+  const calculateConversionFunnels = useCallback((data: any) => {
+    const { contacts, sessions, appointments } = data;
+    
+    const sources = ['landing_page', 'whatsapp', 'manual'];
+    const funnels: ConversionFunnel[] = [];
+
+    sources.forEach(source => {
+      const sourceSessions = sessions.filter((s: any) => s.source === source);
+      const sourceContacts = contacts.filter((c: any) => c.first_source === source);
+      const sourceAppointments = appointments.filter((a: any) => a.source === source);
+
+      const totalSessions = sourceSessions.length;
+      const contactsCreated = sourceContacts.length;
+      const appointmentsBooked = sourceAppointments.length;
+
+      funnels.push({
+        source: source === 'landing_page' ? 'Landing Page' : 
+                source === 'whatsapp' ? 'WhatsApp' : 'Manual',
+        totalSessions,
+        contactsCreated,
+        appointmentsBooked,
+        sessionToContactRate: totalSessions > 0 ? (contactsCreated / totalSessions) * 100 : 0,
+        contactToAppointmentRate: contactsCreated > 0 ? (appointmentsBooked / contactsCreated) * 100 : 0,
       });
     });
 
-    return users.sort((a, b) => b.execution_count - a.execution_count).slice(0, 10);
+    return funnels.filter(f => f.totalSessions > 0 || f.contactsCreated > 0);
+  }, []);
+
+  /**
+   * Get top contacts
+   */
+  const getTopContacts = useCallback((data: any) => {
+    const { contacts, sessions, appointments } = data;
+
+    const contactsWithMetrics = contacts.map((contact: any) => {
+      const contactSessions = sessions.filter((s: any) => s.contact_id === contact.id);
+      const contactAppointments = appointments.filter((a: any) => a.contact_id === contact.id);
+
+      return {
+        ...contact,
+        total_sessions: contactSessions.length,
+        total_appointments: contactAppointments.length,
+      };
+    });
+
+    return contactsWithMetrics
+      .sort((a: any, b: any) => {
+        // Sort by lead score first, then by total sessions
+        if (b.lead_score !== a.lead_score) {
+          return b.lead_score - a.lead_score;
+        }
+        return b.total_sessions - a.total_sessions;
+      })
+      .slice(0, 10);
+  }, []);
+
+  /**
+   * Get recent sessions
+   */
+  const getRecentSessions = useCallback((data: any) => {
+    const { sessions, contacts } = data;
+
+    const sessionsWithContact = sessions.map((session: any) => {
+      const contact = contacts.find((c: any) => c.id === session.contact_id);
+      return {
+        ...session,
+        duration_minutes: calculateSessionDuration(session.start_time, session.end_time),
+        contact_name: contact?.full_name || null,
+        contact_email: contact?.email || null,
+      };
+    });
+
+    return sessionsWithContact
+      .sort((a: any, b: any) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
+      .slice(0, 10);
+  }, []);
+
+  /**
+   * Get upcoming appointments
+   */
+  const getUpcomingAppointments = useCallback((data: any) => {
+    const { appointments, contacts } = data;
+
+    const appointmentsWithContact = appointments.map((appointment: any) => {
+      const contact = contacts.find((c: any) => c.id === appointment.contact_id);
+      return {
+        ...appointment,
+        contact_name: contact?.full_name || null,
+        contact_email: contact?.email || null,
+        contact_phone: contact?.phone || null,
+      };
+    });
+
+    const now = new Date();
+    return appointmentsWithContact
+      .filter((a: any) => new Date(a.appointment_start) >= now)
+      .sort((a: any, b: any) => new Date(a.appointment_start).getTime() - new Date(b.appointment_start).getTime())
+      .slice(0, 10);
   }, []);
 
   /**
@@ -199,8 +391,9 @@ export const useOperasionalBisnisOverview = (filters: OperasionalBisnisOverviewF
       const currentFilters: OperasionalBisnisOverviewFilters = {
         startDate,
         endDate,
-        userFilter,
-        categoryFilter,
+        sourceFilter,
+        lifecycleFilter,
+        leadStatusFilter,
       };
 
       const data = await fetchOperasionalBisnisOverviewData(currentFilters);
@@ -208,23 +401,35 @@ export const useOperasionalBisnisOverview = (filters: OperasionalBisnisOverviewF
       const kpi = calculateKPI(data);
       setKpiData(kpi);
 
-      const timeSeries = calculateTimeSeries(data.toolUsage, {
-        start: startDate,
-        end: endDate,
-      });
+      const timeSeries = calculateTimeSeries(data, { start: startDate, end: endDate });
       setTimeSeriesData(timeSeries);
 
-      const categories = calculateCategoryDistribution(data.toolUsage);
-      setCategoryDistribution(categories);
+      const sourceDistrib = calculateSourceDistribution(data.contacts);
+      setSourceDistribution(sourceDistrib);
 
-      const operations = calculateOperationDistribution(data.toolUsage);
-      setOperationDistribution(operations);
+      const lifecycleDistrib = calculateLifecycleDistribution(data.contacts);
+      setLifecycleDistribution(lifecycleDistrib);
 
-      const tools = calculateTopTools(data.toolUsage);
-      setTopTools(tools);
+      const leadStatusDistrib = calculateLeadStatusDistribution(data.contacts);
+      setLeadStatusDistribution(leadStatusDistrib);
 
-      const users = calculateTopUsers(data.toolUsage);
-      setTopUsers(users);
+      const sessionStatusDistrib = calculateSessionStatusDistribution(data.sessions);
+      setSessionStatusDistribution(sessionStatusDistrib);
+
+      const appointmentStatusDistrib = calculateAppointmentStatusDistribution(data.appointments);
+      setAppointmentStatusDistribution(appointmentStatusDistrib);
+
+      const funnels = calculateConversionFunnels(data);
+      setConversionFunnels(funnels);
+
+      const topContactsList = getTopContacts(data);
+      setTopContacts(topContactsList);
+
+      const recentSessionsList = getRecentSessions(data);
+      setRecentSessions(recentSessionsList);
+
+      const upcomingAppts = getUpcomingAppointments(data);
+      setUpcomingAppointments(upcomingAppts);
 
     } catch (error) {
       console.error("Error fetching OperasionalBisnis overview data:", error);
@@ -235,14 +440,20 @@ export const useOperasionalBisnisOverview = (filters: OperasionalBisnisOverviewF
   }, [
     startDate,
     endDate,
-    userFilter,
-    categoryFilter,
+    sourceFilter,
+    lifecycleFilter,
+    leadStatusFilter,
     calculateKPI,
     calculateTimeSeries,
-    calculateCategoryDistribution,
-    calculateOperationDistribution,
-    calculateTopTools,
-    calculateTopUsers
+    calculateSourceDistribution,
+    calculateLifecycleDistribution,
+    calculateLeadStatusDistribution,
+    calculateSessionStatusDistribution,
+    calculateAppointmentStatusDistribution,
+    calculateConversionFunnels,
+    getTopContacts,
+    getRecentSessions,
+    getUpcomingAppointments
   ]);
 
   /**
@@ -260,10 +471,15 @@ export const useOperasionalBisnisOverview = (filters: OperasionalBisnisOverviewF
   return {
     kpiData,
     timeSeriesData,
-    categoryDistribution,
-    operationDistribution,
-    topTools,
-    topUsers,
+    sourceDistribution,
+    lifecycleDistribution,
+    leadStatusDistribution,
+    sessionStatusDistribution,
+    appointmentStatusDistribution,
+    conversionFunnels,
+    topContacts,
+    recentSessions,
+    upcomingAppointments,
     isLoading,
     refreshData,
   };
