@@ -175,7 +175,7 @@ export const useRagData = (
   // ✨ FUNGSI BARU: Trigger webhook n8n untuk hapus vector database
   const triggerDeleteWebhook = async (id: string) => {
     try {
-      const n8nWebhookUrl = "https://n8n.server.talkvera.com/webhook/8bccb2ce-db7f-4485-9371-67c433ded6ac";
+      const n8nWebhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL_DELETE_FILE_VECTOR;
       
       const response = await fetch(n8nWebhookUrl, {
         method: 'DELETE',

@@ -1,6 +1,7 @@
 // src/components/OperasionalBisnisToolUsage/OperasionalBisnisOverviewSkeleton.tsx
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export const OperasionalBisnisOverviewSkeleton = () => {
   return (
@@ -10,6 +11,21 @@ export const OperasionalBisnisOverviewSkeleton = () => {
           <Skeleton className="h-9 w-64 mb-2" />
           <Skeleton className="h-4 w-96" />
         </div>
+        <Card className="shadow-lg">
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <div className="flex items-center gap-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(8)].map((_, i) => (

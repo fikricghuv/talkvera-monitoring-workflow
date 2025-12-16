@@ -72,6 +72,7 @@ export const ChatConversationDetailModal = ({
       const to = from + MESSAGES_PER_PAGE - 1;
 
       let allMessages: UnifiedMessage[] = [];
+      let messageCount = 0;
 
       // Fetch from appropriate table based on source
       if (conversation.source === 'landing_page') {
@@ -95,7 +96,7 @@ export const ChatConversationDetailModal = ({
             feedback_text: msg.feedback_text,
             source: 'landing_page' as const
           }));
-          setTotalMessages(count || 0);
+          messageCount = count || 0;
         }
       } else if (conversation.source === 'whatsapp') {
         const { data, error, count } = await supabase
@@ -118,9 +119,12 @@ export const ChatConversationDetailModal = ({
             feedback_text: null,
             source: 'whatsapp' as const
           }));
-          setTotalMessages(count || 0);
+          messageCount = count || 0;
         }
       }
+
+      // Set total messages first before calculating hasMore
+      setTotalMessages(messageCount);
 
       if (allMessages.length > 0) {
         if (chatContainerRef.current && !isInitial) {
@@ -134,8 +138,9 @@ export const ChatConversationDetailModal = ({
           setMessages(prev => [...allMessages.reverse(), ...prev]);
         }
 
+        // Calculate hasMore after we know messageCount
         const totalLoaded = (pageNum + 1) * MESSAGES_PER_PAGE;
-        setHasMore(totalLoaded < (totalMessages || allMessages.length));
+        setHasMore(totalLoaded < messageCount);
 
         if (chatContainerRef.current && !isInitial) {
           setTimeout(() => {
@@ -146,6 +151,9 @@ export const ChatConversationDetailModal = ({
             }
           }, 50);
         }
+      } else {
+        // No messages returned, we've reached the end
+        setHasMore(false);
       }
 
       setIsLoadingMessages(false);
@@ -159,9 +167,10 @@ export const ChatConversationDetailModal = ({
   const handleScroll = () => {
     if (!chatContainerRef.current || isLoadingMessages || !hasMore) return;
 
-    const { scrollTop } = chatContainerRef.current;
-
-    if (scrollTop < 100) {
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    
+    // Detect if user scrolled near the top (within 200px)
+    if (scrollTop < 200) {
       const nextPage = page + 1;
       setPage(nextPage);
       loadMessages(nextPage);

@@ -108,7 +108,7 @@ const OperasionalBisnisOverview = () => {
     <div className="space-y-6 pl-4 pr-4 bg-gray-50 min-h-screen pb-8">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex flex-col gap-4 pt-6">
+        <div className="flex flex-col gap-4">
           <OperasionalBisnisOverviewHeader />
 
           {/* Filter Row */}

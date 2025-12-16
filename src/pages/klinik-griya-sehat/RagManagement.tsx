@@ -136,7 +136,7 @@ const RagManagement = () => {
     setIsProcessing(true);
     
     try {
-      const n8nWebhookUrl = "https://n8n.server.talkvera.com/webhook/8bf3bbae-f388-4107-a20c-8595db0b6fbd";
+      const n8nWebhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL_PROCES_FILE;
       
       const response = await fetch(n8nWebhookUrl, {
         method: 'POST',

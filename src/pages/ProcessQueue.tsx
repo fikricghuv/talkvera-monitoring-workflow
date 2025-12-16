@@ -81,7 +81,7 @@ const ProcessQueue = () => {
       setIsProcessing(true);
       
       // URL Webhook n8n
-      const webhookUrl = "https://n8n.server.talkvera.com/webhook/d6cb25f3-f7d2-4dc3-9e98-257bdfc9888d";
+      const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL_PROCES_QUEUE;
       
       const response = await fetch(webhookUrl, {
         method: "POST",
