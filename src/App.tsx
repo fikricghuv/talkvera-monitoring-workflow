@@ -27,6 +27,7 @@ import RoleManagement from "./pages/RoleManagement";
 import CRMManagement from "./pages/operasional-bisnis/CRMManagementTalkvera";
 import { PermissionRoute } from "./components/PermissionRoute";
 import { AuthProvider } from "./contexts/AuthContext";
+import ConsultationMonitoring from "./pages/operasional-bisnis/ConsultationMonitoring"
 
 const queryClient = new QueryClient();
 
@@ -238,6 +239,16 @@ const App = () => (
                 <PermissionRoute requiredResource="operasional_chat">
                   <HeaderLayout>
                     <ChatSessionManagementTalkvera />
+                  </HeaderLayout>
+                </PermissionRoute>
+              }
+            />
+            <Route
+              path="/projects/operasional-management/consultation"
+              element={
+                <PermissionRoute requiredResource="operasional_consultation">
+                  <HeaderLayout>
+                    <ConsultationMonitoring />
                   </HeaderLayout>
                 </PermissionRoute>
               }

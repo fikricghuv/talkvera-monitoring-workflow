@@ -135,6 +135,11 @@ const menuItems: MenuItemType[] = [
             resource: "operasional_chat",
           },
           {
+            title: "Consultation",
+            url: "/projects/operasional-management/consultation",
+            resource: "operasional_consultation",
+          },
+          {
             title: "Knowledge Base",
             url: "/projects/operasional-management/knowledge-base",
             resource: "operasional_kb",
